@@ -1,5 +1,6 @@
 import AdminHeaderActions from '@/Components/AdminHeaderActions';
 import PageHeader from '@/Components/Ui/PageHeader';
+import { useI18n } from '@/hooks/useI18n';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Boxes,
@@ -23,7 +24,7 @@ const modules = [
     {
         id: 'dashboard',
         type: 'link',
-        label: 'Dashboard',
+        labelKey: 'nav.dashboard',
         icon: LayoutDashboard,
         href: 'admin.dashboard',
         match: ['admin.dashboard'],
@@ -31,51 +32,51 @@ const modules = [
     {
         id: 'shifts',
         type: 'link',
-        label: 'Shifts',
+        labelKey: 'nav.shifts',
         icon: Clock3,
         href: 'admin.shifts.index',
         match: ['admin.shifts'],
     },
     {
         id: 'catalog',
-        label: 'Catalog',
+        labelKey: 'nav.catalog',
         icon: Package,
         match: ['admin.products', 'admin.brands', 'admin.categories', 'admin.units', 'admin.variations', 'admin.sections', 'admin.racks'],
         items: [
-            { href: 'admin.brands.index', label: 'Brands' },
-            { href: 'admin.categories.index', label: 'Categories' },
-            { href: 'admin.units.index', label: 'Units' },
-            { href: 'admin.variations.index', label: 'Variations' },
-            { href: 'admin.sections.index', label: 'Sections' },
-            { href: 'admin.racks.index', label: 'Racks' },
-            { href: 'admin.products.index', label: 'Products' },
+            { href: 'admin.brands.index', labelKey: 'nav.brands' },
+            { href: 'admin.categories.index', labelKey: 'nav.categories' },
+            { href: 'admin.units.index', labelKey: 'nav.units' },
+            { href: 'admin.variations.index', labelKey: 'nav.variations' },
+            { href: 'admin.sections.index', labelKey: 'nav.sections' },
+            { href: 'admin.racks.index', labelKey: 'nav.racks' },
+            { href: 'admin.products.index', labelKey: 'nav.products' },
         ],
     },
     {
         id: 'people',
-        label: 'People & Contacts',
+        labelKey: 'nav.people',
         icon: ContactRound,
         match: ['admin.customers', 'admin.suppliers', 'admin.users'],
         items: [
-            { href: 'admin.customers.index', label: 'Customers' },
-            { href: 'admin.suppliers.index', label: 'Suppliers' },
-            { href: 'admin.users.index', label: 'Users' },
+            { href: 'admin.customers.index', labelKey: 'nav.customers' },
+            { href: 'admin.suppliers.index', labelKey: 'nav.suppliers' },
+            { href: 'admin.users.index', labelKey: 'nav.users' },
         ],
     },
     {
         id: 'orders',
-        label: 'Orders',
+        labelKey: 'nav.orders',
         icon: Receipt,
         match: ['admin.orders', 'admin.returns.sales', 'admin.quotations'],
         items: [
-            { href: 'admin.orders.index', label: 'Orders' },
-            { href: 'admin.returns.sales.index', label: 'Refund Orders' },
-            { href: 'admin.quotations.index', label: 'Quotations' },
+            { href: 'admin.orders.index', labelKey: 'nav.orders' },
+            { href: 'admin.returns.sales.index', labelKey: 'nav.refund_orders' },
+            { href: 'admin.quotations.index', labelKey: 'nav.quotations' },
         ],
     },
     {
         id: 'inventory',
-        label: 'Inventory',
+        labelKey: 'nav.inventory',
         icon: Boxes,
         match: [
             'admin.inventory',
@@ -84,49 +85,49 @@ const modules = [
             'admin.serials',
         ],
         items: [
-            { href: 'admin.inventory.stock', label: 'Stock' },
-            { href: 'admin.inventory.low-stock', label: 'Low stock' },
-            { href: 'admin.inventory.product-ledger', label: 'Product ledger' },
-            { href: 'admin.purchases.index', label: 'Purchases' },
-            { href: 'admin.returns.purchases.index', label: 'Purchase returns' },
-            { href: 'admin.inventory.adjustments', label: 'Adjustments' },
-            { href: 'admin.inventory.damages', label: 'Damage' },
-            { href: 'admin.inventory.transfers', label: 'Transfers' },
-            { href: 'admin.serials.index', label: 'Serials / IMEI' },
+            { href: 'admin.inventory.stock', labelKey: 'nav.stock' },
+            { href: 'admin.inventory.low-stock', labelKey: 'nav.low_stock' },
+            { href: 'admin.inventory.product-ledger', labelKey: 'nav.product_ledger' },
+            { href: 'admin.purchases.index', labelKey: 'nav.purchases' },
+            { href: 'admin.returns.purchases.index', labelKey: 'nav.purchase_returns' },
+            { href: 'admin.inventory.adjustments', labelKey: 'nav.adjustments' },
+            { href: 'admin.inventory.damages', labelKey: 'nav.damage' },
+            { href: 'admin.inventory.transfers', labelKey: 'nav.transfers' },
+            { href: 'admin.serials.index', labelKey: 'nav.serials' },
         ],
     },
     {
         id: 'financials',
-        label: 'Financials',
+        labelKey: 'nav.financials',
         icon: Wallet,
         match: ['admin.finance'],
         items: [
-            { href: 'admin.finance.accounts.index', label: 'Accounts' },
-            { href: 'admin.finance.taxes.index', label: 'Taxes' },
-            { href: 'admin.finance.money-sources.index', label: 'Money sources' },
-            { href: 'admin.finance.transactions.index', label: 'Transactions' },
-            { href: 'admin.finance.expenses.index', label: 'Expenses' },
-            { href: 'admin.finance.supplier-payments.index', label: 'Supplier payments' },
-            { href: 'admin.finance.customer-payments.index', label: 'Customer payments' },
-            { href: 'admin.finance.employee-payments.index', label: 'Employee payments' },
+            { href: 'admin.finance.accounts.index', labelKey: 'nav.accounts' },
+            { href: 'admin.finance.taxes.index', labelKey: 'nav.taxes' },
+            { href: 'admin.finance.money-sources.index', labelKey: 'nav.money_sources' },
+            { href: 'admin.finance.transactions.index', labelKey: 'nav.transactions' },
+            { href: 'admin.finance.expenses.index', labelKey: 'nav.expenses' },
+            { href: 'admin.finance.supplier-payments.index', labelKey: 'nav.supplier_payments' },
+            { href: 'admin.finance.customer-payments.index', labelKey: 'nav.customer_payments' },
+            { href: 'admin.finance.employee-payments.index', labelKey: 'nav.employee_payments' },
         ],
     },
     {
         id: 'hr',
-        label: 'HR',
+        labelKey: 'nav.hr',
         icon: UsersRound,
         match: ['admin.hr'],
         items: [
-            { href: 'admin.hr.attendance.index', label: 'Attendance' },
-            { href: 'admin.hr.leaves.index', label: 'Leaves' },
-            { href: 'admin.hr.payroll.index', label: 'Payroll' },
-            { href: 'admin.hr.adjustments.index', label: 'Bonuses / deductions' },
+            { href: 'admin.hr.attendance.index', labelKey: 'nav.attendance' },
+            { href: 'admin.hr.leaves.index', labelKey: 'nav.leaves' },
+            { href: 'admin.hr.payroll.index', labelKey: 'nav.payroll' },
+            { href: 'admin.hr.adjustments.index', labelKey: 'nav.bonuses_deductions' },
         ],
     },
     {
         id: 'reports',
         type: 'link',
-        label: 'Reports',
+        labelKey: 'nav.reports',
         icon: ChartColumn,
         href: 'admin.reports.hub',
         match: ['admin.reports'],
@@ -134,21 +135,21 @@ const modules = [
     {
         id: 'subscription',
         type: 'link',
-        label: 'Subscription',
+        labelKey: 'nav.subscription',
         icon: CreditCard,
         href: 'admin.subscription.index',
         match: ['admin.subscription'],
     },
     {
         id: 'settings',
-        label: 'Settings',
+        labelKey: 'nav.settings',
         icon: Settings,
         match: ['admin.settings', 'admin.branches', 'admin.roles', 'admin.activity'],
         items: [
-            { href: 'admin.settings.edit', label: 'Company / POS / Receipt' },
-            { href: 'admin.branches.index', label: 'Branches' },
-            { href: 'admin.roles.index', label: 'Roles & permissions' },
-            { href: 'admin.activity.index', label: 'Activity log' },
+            { href: 'admin.settings.edit', labelKey: 'nav.company_pos_receipt' },
+            { href: 'admin.branches.index', labelKey: 'nav.branches' },
+            { href: 'admin.roles.index', labelKey: 'nav.roles' },
+            { href: 'admin.activity.index', labelKey: 'nav.activity' },
         ],
     },
 ];
@@ -167,19 +168,19 @@ function moduleMatches(current, mod) {
     );
 }
 
-function NavLink({ mod, current }) {
+function NavLink({ mod, current, t }) {
     const Icon = mod.icon;
     const active = moduleMatches(current, mod);
 
     return (
         <Link href={route(mod.href)} className={`dp-nav-item ${active ? 'dp-nav-item-active' : ''}`}>
             <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-            <span className="min-w-0 flex-1 truncate">{mod.label}</span>
+            <span className="min-w-0 flex-1 truncate">{t(mod.labelKey)}</span>
         </Link>
     );
 }
 
-function NavGroup({ mod, current, open, onToggle }) {
+function NavGroup({ mod, current, open, onToggle, t }) {
     const Icon = mod.icon;
     const groupActive = moduleMatches(current, mod);
 
@@ -191,7 +192,7 @@ function NavGroup({ mod, current, open, onToggle }) {
                 className={`dp-nav-item ${groupActive ? 'dp-nav-item-active' : ''}`}
             >
                 <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-                <span className="min-w-0 flex-1 truncate text-left">{mod.label}</span>
+                <span className="min-w-0 flex-1 truncate text-start">{t(mod.labelKey)}</span>
                 {open ? (
                     <Minus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />
                 ) : (
@@ -209,7 +210,7 @@ function NavGroup({ mod, current, open, onToggle }) {
                                     href={route(item.href)}
                                     className={`dp-nav-sub ${active ? 'dp-nav-sub-active' : ''}`}
                                 >
-                                    {item.label}
+                                    {t(item.labelKey)}
                                 </Link>
                             </li>
                         );
@@ -222,6 +223,7 @@ function NavGroup({ mod, current, open, onToggle }) {
 
 export default function AdminLayout({ title, description = null, children, actions = null }) {
     const { flash } = usePage().props;
+    const { t } = useI18n();
     const current = route().current();
     const [collapsed, setCollapsed] = useState(false);
 
@@ -268,7 +270,9 @@ export default function AdminLayout({ title, description = null, children, actio
                     {!collapsed && (
                         <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-theme-ink">DukanPOS</p>
-                            <p className="truncate text-[11px] text-theme-ink-muted">Back office</p>
+                            <p className="truncate text-[11px] text-theme-ink-muted">
+                                {t('nav.back_office')}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -276,7 +280,7 @@ export default function AdminLayout({ title, description = null, children, actio
                 <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
                     {modules.map((mod) =>
                         mod.type === 'link' ? (
-                            <NavLink key={mod.id} mod={mod} current={current} />
+                            <NavLink key={mod.id} mod={mod} current={current} t={t} />
                         ) : (
                             <NavGroup
                                 key={mod.id}
@@ -287,6 +291,7 @@ export default function AdminLayout({ title, description = null, children, actio
                                     if (collapsed) setCollapsed(false);
                                     toggle(mod.id);
                                 }}
+                                t={t}
                             />
                         ),
                     )}
@@ -300,7 +305,7 @@ export default function AdminLayout({ title, description = null, children, actio
                             type="button"
                             onClick={() => setCollapsed((v) => !v)}
                             className="dp-icon-btn"
-                            title="Toggle sidebar"
+                            title={t('header.toggle_sidebar')}
                         >
                             <PanelLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
                         </button>

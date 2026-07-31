@@ -3,15 +3,16 @@ import Button from '@/Components/Ui/Button';
 import ImageUploadField from '@/Components/Ui/ImageUploadField';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import { useI18n } from '@/hooks/useI18n';
 import { formatMoney } from '@/lib/money';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 const TABS = [
-    { id: 'general', label: 'General' },
-    { id: 'preferences', label: 'Preferences' },
-    { id: 'pos', label: 'POS' },
-    { id: 'receipt', label: 'Receipt' },
+    { id: 'general', labelKey: 'settings.general' },
+    { id: 'preferences', labelKey: 'settings.preferences' },
+    { id: 'pos', labelKey: 'settings.pos' },
+    { id: 'receipt', labelKey: 'settings.receipt' },
 ];
 
 const WEEKDAYS = [
@@ -129,6 +130,8 @@ function dataFromSettings(settings) {
         currency_position: settings.currency_position || 'left',
         decimal_points: String(settings.decimal_points ?? 2),
         timezone: settings.timezone || 'UTC',
+        locale: settings.locale || 'en',
+        rtl: !!settings.rtl,
         date_format: settings.date_format || 'Y-m-d',
         time_format: settings.time_format || '12',
         week_starts_on: settings.week_starts_on || 'monday',
@@ -146,8 +149,45 @@ function dataFromSettings(settings) {
     };
 }
 
+/** Settings that change shared UI (locale, dir, money/date formatting, POS chrome). */
+const RELOAD_ON_CHANGE_KEYS = [
+    'locale',
+    'rtl',
+    'shop_name',
+    'currency',
+    'currency_symbol',
+    'currency_position',
+    'decimal_points',
+    'timezone',
+    'date_format',
+    'time_format',
+    'week_starts_on',
+    'list_page_limit',
+    'pos_allow_credit',
+    'pos_show_stock',
+    'pos_show_product_image',
+    'pos_catalog_mode',
+];
+
+function settingValuesDiffer(before, after) {
+    if (typeof before === 'boolean' || typeof after === 'boolean') {
+        return Boolean(before) !== Boolean(after);
+    }
+
+    return String(before ?? '') !== String(after ?? '');
+}
+
+function shouldReloadAfterSave(previousSettings, nextData) {
+    const baseline = dataFromSettings(previousSettings);
+
+    return RELOAD_ON_CHANGE_KEYS.some((key) =>
+        settingValuesDiffer(baseline[key], nextData[key]),
+    );
+}
+
 export default function Edit({ settings, section = 'general', options = {} }) {
-    const active = TABS.some((t) => t.id === section) ? section : 'general';
+    const { t } = useI18n();
+    const active = TABS.some((tab) => tab.id === section) ? section : 'general';
     const form = useForm(dataFromSettings(settings));
     const [previewUrl, setPreviewUrl] = useState(settings.logo_url || null);
     const resetKey = `${settings.logo_url || 'none'}`;
@@ -230,6 +270,8 @@ export default function Edit({ settings, section = 'general', options = {} }) {
     const submit = (e) => {
         e.preventDefault();
 
+        const reloadAfterSave = shouldReloadAfterSave(settings, form.data);
+
         form.transform((data) => ({
             ...data,
             _method: 'put',
@@ -240,8 +282,18 @@ export default function Edit({ settings, section = 'general', options = {} }) {
 
         form.post(route('admin.settings.update'), {
             forceFormData: true,
-            preserveScroll: true,
+            preserveScroll: !reloadAfterSave,
             onFinish: () => form.transform((d) => d),
+            onSuccess: () => {
+                if (!reloadAfterSave) {
+                    return;
+                }
+
+                // Full reload so locale/RTL/dir and shared company config apply cleanly.
+                window.location.assign(
+                    route('admin.settings.edit', { section: active }),
+                );
+            },
         });
     };
 
@@ -264,7 +316,7 @@ export default function Edit({ settings, section = 'general', options = {} }) {
                                 : 'text-theme-ink-muted hover:text-theme-ink'
                         }`}
                     >
-                        {tab.label}
+                        {t(tab.labelKey)}
                     </button>
                 ))}
             </div>
@@ -350,6 +402,40 @@ export default function Edit({ settings, section = 'general', options = {} }) {
 
                 {active === 'preferences' && (
                     <>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <Field
+                                label={t('settings.language')}
+                                error={form.errors.locale}
+                                hint={t('settings.language_hint')}
+                            >
+                                <select
+                                    className="dp-select-reset h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                    value={form.data.locale}
+                                    onChange={(e) => form.setData('locale', e.target.value)}
+                                >
+                                    {(options.locales || []).map((locale) => (
+                                        <option key={locale.value} value={locale.value}>
+                                            {locale.native} ({locale.label})
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field
+                                label={t('settings.rtl')}
+                                error={form.errors.rtl}
+                                hint={t('settings.rtl_hint')}
+                            >
+                                <label className="flex h-10 items-center gap-2 text-sm text-theme-ink">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-theme-border text-theme-primary focus:ring-theme-primary/30"
+                                        checked={!!form.data.rtl}
+                                        onChange={(e) => form.setData('rtl', e.target.checked)}
+                                    />
+                                    <span>{t('settings.rtl_enable')}</span>
+                                </label>
+                            </Field>
+                        </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Field label="Currency" error={form.errors.currency}>
                                 <SearchableSelect

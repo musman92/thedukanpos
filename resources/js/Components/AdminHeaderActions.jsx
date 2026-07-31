@@ -1,3 +1,6 @@
+import ThemeToggle from '@/Components/ThemeToggle';
+import { useI18n } from '@/hooks/useI18n';
+import { BRANCH_HEADER, setTabBranchId } from '@/lib/branchTab';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     Check,
@@ -11,8 +14,6 @@ import {
     Store,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import ThemeToggle from '@/Components/ThemeToggle';
-import { BRANCH_HEADER, setTabBranchId } from '@/lib/branchTab';
 
 function useClickOutside(ref, onClose) {
     useEffect(() => {
@@ -24,7 +25,7 @@ function useClickOutside(ref, onClose) {
     }, [ref, onClose]);
 }
 
-function OpenPosButton() {
+function OpenPosButton({ t }) {
     return (
         <a
             href="/pos"
@@ -33,15 +34,15 @@ function OpenPosButton() {
                 window.location.assign('/pos');
             }}
             className="dp-btn-primary inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold"
-            title="Open POS"
+            title={t('header.open_pos')}
         >
             <Store className="h-4 w-4" strokeWidth={2} />
-            <span className="hidden sm:inline">Open POS</span>
+            <span className="hidden sm:inline">{t('header.open_pos')}</span>
         </a>
     );
 }
 
-function ShiftButton({ openShift }) {
+function ShiftButton({ openShift, t }) {
     if (!openShift?.id) {
         return (
             <Link
@@ -50,7 +51,7 @@ function ShiftButton({ openShift }) {
                 style={{ background: 'var(--color-success)' }}
             >
                 <CirclePlay className="h-4 w-4 shrink-0" strokeWidth={2} />
-                <span className="hidden sm:inline">Start Shift</span>
+                <span className="hidden sm:inline">{t('header.start_shift')}</span>
             </Link>
         );
     }
@@ -60,10 +61,10 @@ function ShiftButton({ openShift }) {
             href={route('admin.shifts.show', { shift: openShift.id })}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-white"
             style={{ background: 'var(--color-danger)' }}
-            title="End Shift"
+            title={t('header.end_shift')}
         >
             <StopCircle className="h-4 w-4 shrink-0" strokeWidth={2} />
-            <span className="hidden sm:inline">End Shift</span>
+            <span className="hidden sm:inline">{t('header.end_shift')}</span>
         </Link>
     );
 }
@@ -105,7 +106,7 @@ function BranchDropdown({ branch, branches }) {
             </button>
 
             {open && (
-                <div className="dp-card absolute right-0 z-50 mt-1.5 w-56 overflow-hidden py-1">
+                <div className="dp-card absolute end-0 z-50 mt-1.5 w-56 overflow-hidden py-1">
                     {(branches || []).map((b) => {
                         const active = branch?.id === b.id;
                         return (
@@ -113,7 +114,7 @@ function BranchDropdown({ branch, branches }) {
                                 key={b.id}
                                 type="button"
                                 onClick={() => switchBranch(b)}
-                                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                                className={`flex w-full items-center gap-2 px-3 py-2 text-start text-sm ${
                                     active
                                         ? 'bg-theme-primary-soft font-medium text-theme-primary'
                                         : 'text-theme-ink hover:bg-theme-bg'
@@ -133,7 +134,7 @@ function BranchDropdown({ branch, branches }) {
     );
 }
 
-function UserMenu({ user, tenant }) {
+function UserMenu({ user, tenant, t }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useClickOutside(ref, () => setOpen(false));
@@ -149,7 +150,7 @@ function UserMenu({ user, tenant }) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-full border border-theme-primary/40 bg-theme-surface py-1 pl-1 pr-2.5"
+                className="inline-flex items-center gap-2 rounded-full border border-theme-primary/40 bg-theme-surface py-1 ps-1 pe-2.5"
             >
                 <span
                     className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -164,7 +165,7 @@ function UserMenu({ user, tenant }) {
             </button>
 
             {open && (
-                <div className="dp-card absolute right-0 z-50 mt-1.5 w-64 overflow-hidden">
+                <div className="dp-card absolute end-0 z-50 mt-1.5 w-64 overflow-hidden">
                     <div className="border-b border-theme-border px-3.5 py-3">
                         <p className="font-semibold text-theme-ink">{user.name}</p>
                         <p className="truncate text-xs text-theme-ink-muted">
@@ -187,7 +188,7 @@ function UserMenu({ user, tenant }) {
                             onClick={() => setOpen(false)}
                         >
                             <LayoutDashboard className="h-4 w-4" strokeWidth={1.75} />
-                            Dashboard
+                            {t('header.dashboard')}
                         </Link>
                         <Link
                             href={route('admin.settings.edit')}
@@ -195,7 +196,7 @@ function UserMenu({ user, tenant }) {
                             onClick={() => setOpen(false)}
                         >
                             <Settings className="h-4 w-4" strokeWidth={1.75} />
-                            Settings
+                            {t('header.settings')}
                         </Link>
                     </div>
                     <div className="border-t border-theme-border py-1">
@@ -205,7 +206,7 @@ function UserMenu({ user, tenant }) {
                             className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-theme-danger hover:bg-theme-bg"
                         >
                             <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                            Logout
+                            {t('header.logout')}
                         </button>
                     </div>
                 </div>
@@ -216,6 +217,7 @@ function UserMenu({ user, tenant }) {
 
 export default function AdminHeaderActions() {
     const { auth, branch, branches, openShift, tenant } = usePage().props;
+    const { t } = useI18n();
 
     // Keep tab storage aligned after Inertia navigations.
     useEffect(() => {
@@ -226,11 +228,11 @@ export default function AdminHeaderActions() {
 
     return (
         <div className="flex items-center gap-2 sm:gap-2.5">
-            <OpenPosButton />
-            <ShiftButton openShift={openShift} />
+            <OpenPosButton t={t} />
+            <ShiftButton openShift={openShift} t={t} />
             <BranchDropdown branch={branch} branches={branches} />
             <ThemeToggle />
-            <UserMenu user={auth?.user} tenant={tenant} />
+            <UserMenu user={auth?.user} tenant={tenant} t={t} />
         </div>
     );
 }

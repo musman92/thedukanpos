@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Services\ImageUploadService;
 use App\Services\SettingService;
+use App\Support\Locale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
@@ -38,6 +39,8 @@ class UpdateSettingsRequest extends FormRequest
             'currency_position' => ['nullable', 'in:left,right'],
             'decimal_points' => ['nullable', 'integer', 'min:0', 'max:4'],
             'timezone' => ['nullable', 'string', 'max:100'],
+            'locale' => ['nullable', 'string', Rule::in(Locale::keys())],
+            'rtl' => ['sometimes', 'boolean'],
             'date_format' => ['nullable', 'string', Rule::in(SettingService::DATE_FORMATS)],
             'time_format' => ['nullable', 'in:12,24'],
             'week_starts_on' => ['nullable', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
@@ -76,6 +79,8 @@ class UpdateSettingsRequest extends FormRequest
             'currency_position' => $this->input('currency_position'),
             'decimal_points' => $this->input('decimal_points'),
             'timezone' => $this->input('timezone'),
+            'locale' => $this->input('locale'),
+            'rtl' => $this->boolean('rtl'),
             'date_format' => $this->input('date_format'),
             'time_format' => $this->input('time_format'),
             'week_starts_on' => $this->input('week_starts_on'),

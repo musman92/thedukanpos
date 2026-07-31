@@ -4,9 +4,11 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { useI18n } from '@/hooks/useI18n';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Login({ status }) {
+    const { t } = useI18n();
     const { data, setData, post, processing, errors, reset } = useForm({
         login: 'admin@shop1',
         password: '',
@@ -22,13 +24,13 @@ export default function Login({ status }) {
 
     return (
         <GuestLayout>
-            <Head title="Log in" />
+            <Head title={t('auth.log_in')} />
 
             <div className="mb-6">
-                <h1 className="font-display text-xl tracking-tight text-stone-900">Sign in</h1>
-                <p className="mt-1 text-sm text-stone-500">
-                    Use username@shopcode
-                </p>
+                <h1 className="font-display text-xl tracking-tight text-stone-900">
+                    {t('auth.sign_in')}
+                </h1>
+                <p className="mt-1 text-sm text-stone-500">{t('auth.login_hint')}</p>
             </div>
 
             {status && (
@@ -39,7 +41,7 @@ export default function Login({ status }) {
 
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="login" value="Login" />
+                    <InputLabel htmlFor="login" value={t('auth.login')} />
                     <TextInput
                         id="login"
                         type="text"
@@ -52,13 +54,11 @@ export default function Login({ status }) {
                         onChange={(e) => setData('login', e.target.value)}
                     />
                     <InputError message={errors.login} className="mt-2" />
-                    <p className="mt-1 text-xs text-gray-500">
-                        Example: admin@shop1
-                    </p>
+                    <p className="mt-1 text-xs text-gray-500">{t('auth.example')}</p>
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                    <InputLabel htmlFor="password" value={t('auth.password')} />
                     <TextInput
                         id="password"
                         type="password"
@@ -81,14 +81,14 @@ export default function Login({ status }) {
                             }
                         />
                         <span className="ms-2 text-sm text-gray-600">
-                            Remember me
+                            {t('auth.remember')}
                         </span>
                     </label>
                 </div>
 
                 <div className="mt-6 flex items-center justify-end">
                     <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
+                        {t('auth.log_in')}
                     </PrimaryButton>
                 </div>
             </form>

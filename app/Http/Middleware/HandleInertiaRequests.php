@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Branch;
 use App\Models\Shift;
 use App\Support\BranchContext;
+use App\Support\Locale;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -60,6 +61,17 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'import_result' => fn () => $request->session()->get('import_result'),
             ],
+            'i18n' => function () {
+                $locale = Locale::normalize(app()->getLocale());
+                $rtl = Locale::resolveRtl();
+
+                return [
+                    'locale' => $locale,
+                    'dir' => $rtl ? 'rtl' : 'ltr',
+                    'rtl' => $rtl,
+                    'locales' => Locale::options(),
+                ];
+            },
             'tenant' => fn () => tenancy()->initialized ? [
                 'id' => tenant('id'),
                 'code' => tenant('code'),

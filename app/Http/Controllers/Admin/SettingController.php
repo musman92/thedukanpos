@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
 use App\Services\SettingService;
+use App\Support\Locale;
 use App\Support\ReceiptSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class SettingController extends Controller
             'options' => [
                 'currencies' => SettingService::CURRENCIES,
                 'date_formats' => SettingService::DATE_FORMATS,
+                'locales' => Locale::options(),
                 'receipt_section_keys' => SettingService::RECEIPT_SECTION_KEYS,
                 'receipt_section_labels' => ReceiptSections::labels(),
                 'receipt_section_groups' => ReceiptSections::groups(),
@@ -39,6 +41,6 @@ class SettingController extends Controller
     {
         $this->settings->update($request->payload());
 
-        return back()->with('status', 'Settings saved.');
+        return back()->with('status', __('settings.saved'));
     }
 }

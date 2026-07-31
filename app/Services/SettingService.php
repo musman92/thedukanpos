@@ -74,6 +74,8 @@ class SettingService
             'currency_position' => 'left',
             'decimal_points' => 2,
             'timezone' => config('app.timezone', 'UTC'),
+            'locale' => (string) config('locales.default', 'en'),
+            'rtl' => false,
             'date_format' => 'Y-m-d',
             'time_format' => '12',
             'week_starts_on' => 'monday',
@@ -153,6 +155,9 @@ class SettingService
             $out['currency_symbol'] = self::CURRENCY_SYMBOLS[$out['currency']] ?? $out['currency'];
         }
 
+        $out['locale'] = \App\Support\Locale::normalize($out['locale'] ?? null);
+        $out['rtl'] = filter_var($out['rtl'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
         return $out;
     }
 
@@ -173,6 +178,8 @@ class SettingService
             'currency_position' => $all['currency_position'],
             'decimal_points' => (int) $all['decimal_points'],
             'timezone' => $all['timezone'],
+            'locale' => \App\Support\Locale::normalize($all['locale'] ?? null),
+            'rtl' => (bool) ($all['rtl'] ?? false),
             'date_format' => $all['date_format'],
             'time_format' => $all['time_format'],
             'week_starts_on' => $all['week_starts_on'],
