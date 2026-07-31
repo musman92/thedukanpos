@@ -1,0 +1,279 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ |--------------------------------------------------------------------------
+ | DukanPOS theme tokens
+ | Change colors here — UI reads these variables everywhere.
+ | Light is default. Dark overrides via [data-theme="dark"].
+ |--------------------------------------------------------------------------
+ */
+
+/* Light (default) */
+:root,
+[data-theme='light'] {
+    /* Brand */
+    --color-primary: #0f766e;
+    --color-primary-hover: #0d9488;
+    --color-primary-soft: #ccfbf1;
+    --color-primary-muted: #99f6e4;
+    --color-brand-mark: #ea580c;
+    --color-on-primary: #ffffff;
+
+    /* Surfaces */
+    --color-bg: #f4f6f9;
+    --color-surface: #ffffff;
+    --color-sidebar: #ffffff;
+    --color-sidebar-border: #eef0f4;
+    --color-header: #ffffff;
+
+    /* Text */
+    --color-ink: #1f2937;
+    --color-ink-soft: #6b7280;
+    --color-ink-muted: #9ca3af;
+
+    /* Borders / shadows */
+    --color-border: #e5e7eb;
+    --color-border-strong: #d1d5db;
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+
+    /* Status */
+    --color-success: #16a34a;
+    --color-warning: #d97706;
+    --color-danger: #dc2626;
+    --color-info: #0284c8;
+
+    /* Derived */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 0.875rem;
+}
+
+/* Dark */
+[data-theme='dark'] {
+    --color-primary: #2dd4bf;
+    --color-primary-hover: #5eead4;
+    --color-primary-soft: rgba(45, 212, 191, 0.14);
+    --color-primary-muted: rgba(45, 212, 191, 0.28);
+    --color-brand-mark: #f97316;
+    --color-on-primary: #0f172a;
+
+    --color-bg: #0f1419;
+    --color-surface: #171c24;
+    --color-sidebar: #131820;
+    --color-sidebar-border: #243041;
+    --color-header: #171c24;
+
+    --color-ink: #e8edf5;
+    --color-ink-soft: #a7b0bf;
+    --color-ink-muted: #738092;
+
+    --color-border: #243041;
+    --color-border-strong: #334155;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.28);
+
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --color-info: #38bdf8;
+}
+
+@layer base {
+    html,
+    body {
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+}
+
+@layer components {
+    .dp-app {
+        background: var(--color-bg);
+        color: var(--color-ink);
+        min-height: 100vh;
+    }
+
+    .dp-sidebar {
+        background: var(--color-sidebar);
+        border-right: 1px solid var(--color-sidebar-border);
+    }
+
+    .dp-header {
+        background: var(--color-header);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .dp-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-card);
+    }
+
+    .dp-btn-primary {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-radius: var(--radius-sm);
+        transition: background 0.15s ease;
+    }
+
+    .dp-btn-primary:hover {
+        background: var(--color-primary-hover);
+    }
+
+    .dp-nav-item {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 0.65rem;
+        border-radius: var(--radius-sm);
+        padding: 0.55rem 0.7rem;
+        font-size: 0.875rem;
+        color: var(--color-ink-soft);
+        transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .dp-nav-item:hover {
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+
+    .dp-nav-item-active {
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+
+    .dp-nav-sub {
+        display: block;
+        border-radius: var(--radius-sm);
+        padding: 0.4rem 0.7rem 0.4rem 2.35rem;
+        font-size: 0.8125rem;
+        color: var(--color-ink-soft);
+        transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .dp-nav-sub:hover {
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+
+    .dp-nav-sub-active {
+        color: var(--color-primary);
+        font-weight: 600;
+        background: var(--color-primary-soft);
+    }
+
+    .dp-flash {
+        border: 1px solid var(--color-primary-muted);
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
+        border-radius: var(--radius-md);
+    }
+
+    .dp-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+        padding: 0.4rem;
+        color: var(--color-ink-soft);
+        transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .dp-icon-btn:hover {
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+}
+
+/* Outside @layer so it beats @tailwindcss/forms base select chevrons */
+select.dp-select-reset {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: none !important;
+}
+
+select.dp-select-reset::-ms-expand {
+    display: none;
+}
+
+@keyframes dp-drawer-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0.85;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pos-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pos-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.pos-shell {
+    background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in srgb, var(--color-brand-mark) 10%, transparent), transparent 50%),
+        var(--color-bg);
+}
+
+.pos-rise {
+    animation: pos-rise 0.4s ease-out both;
+}
+
+.pos-pop {
+    animation: pos-pop 0.22s ease-out both;
+}
+
+.pos-pay-btn {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+    color: var(--color-on-primary);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.pos-pay-btn:hover:not(:disabled) {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary) 42%, transparent);
+}
+
+.pos-pay-btn:disabled {
+    opacity: 0.45;
+    box-shadow: none;
+}
+
+/* Hide number spinners so qty digit stays visible in compact POS inputs */
+.pos-qty-input {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.pos-qty-input::-webkit-outer-spin-button,
+.pos-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

@@ -1,0 +1,31 @@
+---
+description: Admin nav label naming — plural vs singular
+alwaysApply: true
+---
+
+# Admin navigation naming
+
+## Rule
+
+| Screen type | Label form | Examples |
+|-------------|------------|----------|
+| List of many records (CRUD / tables) | **Plural** | Brands, Products, Customers, Suppliers, Users, Branches, Leaves |
+| Concept, tool, or process | **Singular or short phrase** | Dashboard, Inventory, Attendance, Payroll, Settings, Stock on hand |
+| Nav group titles | Singular concept or short label | Catalog, Inventory, Financials, HR, Settings |
+
+If the page is mainly a table of entities → plural. If it is a workspace or topic → singular / phrase.
+
+## Do
+
+- Prefer plural for entity list screens and “Add X” buttons (`Add User`, `Add Brand`)
+- Keep descriptive phrases for non-lists (`Import / export`, `Roles & permissions`, `Bonuses / deductions`)
+- Match route/page names to the plural entity when practical (`admin.users.*`, `Admin/Users/`)
+
+## Don’t
+
+- Mix singular and plural for the same kind of screen (e.g. `Leave` next to `Customers`)
+- Use vague narrow labels when the screen covers more than one concern — prefer familiar terms (`Users` over `Staff` for login + employee accounts)
+
+## People & Contacts
+
+- Customers, Suppliers, Users (merged login + optional employee profile)

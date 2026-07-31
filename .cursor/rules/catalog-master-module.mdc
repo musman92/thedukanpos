@@ -1,0 +1,57 @@
+---
+description: Brands is the template for catalog master modules (categories, units, taxes, etc.)
+alwaysApply: true
+---
+
+# Catalog master module template = Brands
+
+When adding or refactoring a tenant catalog master (Category, Unit, Tax, Variation, etc.), **copy Brands**. Do not invent a parallel style (no Blade CRUD, no fat controllers, no CatalogMasters mega-page for new modules).
+
+Reference paths (read these, then mirror):
+
+- `app/Models/Brand.php`
+- `app/Services/BrandService.php`
+- `app/Http/Controllers/Admin/BrandController.php`
+- `app/Http/Controllers/Api/V1/BrandController.php`
+- `app/Http/Requests/Admin/StoreBrandRequest.php` + `UpdateBrandRequest.php`
+- `app/Http/Resources/Api/V1/BrandResource.php`
+- `resources/js/Pages/Admin/Brands/` (`Index.jsx`, `*FormDrawer`, optional import/export drawers)
+- Routes: `admin.{plural}.*` in `routes/web.php`, `api.v1.{plural}.*` in `routes/api.php`
+
+## Required shape
+
+1. **Thin controllers** — parse request → call service → Inertia redirect/JSON. No business logic in controllers.
+2. **Service owns writes** — `paginate`, `create`, `update`, `delete`. Admin + API share one service.
+3. **FormRequests** — shape rules + uniqueness in `withValidator`; expose `payload()`. API reuses Admin requests (no duplicate Api requests unless needed).
+4. **Service re-asserts** business rules (uniqueness, delete-in-use) via `ValidationException`.
+5. **List contract** — filters `q`, `per_page`, `sort`, `direction`; return `{ itemsKey: paginator, filters: { q, per_page, company_page_limit, sort, direction } }`. Use `company_page_limit()` / `resolve_page_limit()`. Default sort: `id` desc. Allowlist sort columns.
+6. **Web UI** — Inertia `Admin/{Plural}/Index` + form drawer (not separate create/edit pages). Use shared `Drawer`, `SortableTh`, `PageLimitSelect`, `Pagination`, `confirmDelete`.
+7. **API** — CRUD under `/api/v1/{plural}` with Sanctum + `X-Tenant-Code`. Index uses `*Resource::collection($paginator)->additional(['filters' => …])`. Allow `POST` on update for multipart images. `image_url` must use `api.v1.media.show`, not admin media.
+8. **Nav** — add under Catalog in `AdminLayout.jsx`.
+
+## Optional plugs (include only if the master needs them)
+
+- **Images** — `ImageUploadService` + `ImageUploadField` + `image` column; store under `{plural}/` directory.
+- **Import/export** — `*ImportExportService` + ImportExportController methods + ExportMenu/ImportDrawer; keep headers/upsert keys module-specific.
+
+## Customize per module
+
+- Table columns / relations / `withCount` delete guard
+- Auto-code prefix (`Brand::nextAutoCode` → `B01`; Category might use `C01`)
+- Search/sort allowlists, import headers, drawer fields, Inertia labels
+
+## Do not add by default
+
+- Soft deletes
+- Spatie permission gates on routes (auth + tenancy only until RBAC pass)
+- Dedicated API-only FormRequests that duplicate Admin rules
+- New masters on the old `CatalogMasterController` / `Admin/Catalog/Masters.jsx` mega-page
+
+## Naming
+
+| Kind | Pattern |
+|------|---------|
+| Model / Service | `Unit`, `UnitService` |
+| Table / routes / pages | `units`, `admin.units.*`, `Admin/Units/` |
+| Requests | `StoreUnitRequest`, `UpdateUnitRequest` |
+| API resource | `Api\V1\UnitResource` |
