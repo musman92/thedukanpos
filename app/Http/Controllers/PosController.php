@@ -52,8 +52,21 @@ class PosController extends Controller
                 ->get(['id', 'name', 'type']),
             'customers' => Customer::query()
                 ->where('is_active', true)
+                ->orderByRaw("CASE WHEN UPPER(code) = ? THEN 0 ELSE 1 END", [Customer::CODE_WALK_IN])
                 ->orderBy('name')
-                ->get(['id', 'name', 'phone', 'balance']),
+                ->get(['id', 'name', 'code', 'phone', 'balance', 'is_system'])
+                ->map(fn (Customer $customer) => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'code' => $customer->code,
+                    'phone' => $customer->phone,
+                    'balance' => $customer->balance,
+                    'is_system' => (bool) $customer->is_system,
+                    'is_walk_in' => $customer->isWalkIn(),
+                ])
+                ->values()
+                ->all(),
+            'default_customer_id' => Customer::walkIn()?->id,
         ]);
     }
 
@@ -154,15 +167,23 @@ class PosController extends Controller
         $payments = collect($data['payments'] ?? [])->filter(fn ($p) => (float) $p['amount'] > 0)->values()->all();
         $paidSum = collect($payments)->sum(fn ($p) => (float) $p['amount']);
 
+        $walkIn = Customer::walkIn();
+        $customerId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
+        if (! $customerId && $walkIn) {
+            $customerId = (int) $walkIn->id;
+        }
+        $isWalkInCustomer = $walkIn && $customerId === (int) $walkIn->id;
+        $creditCustomerId = $isWalkInCustomer ? null : $customerId;
+
         if ($isFoc) {
             $payments = [];
             $paidSum = 0;
-        } elseif ($paidSum <= 0 && empty($data['customer_id'])) {
+        } elseif ($paidSum <= 0 && ! $creditCustomerId) {
             return response()->json(['message' => 'Add a payment or select a customer for credit.'], 422);
         }
 
         // Full credit / unpaid remainder needs credit enabled (FOC is not credit).
-        if (! $isFoc && ($paidSum <= 0 || ! empty($data['customer_id']))) {
+        if (! $isFoc && ($paidSum <= 0 || $creditCustomerId)) {
             if (! $this->settings->allowPosCredit() && $paidSum <= 0) {
                 return response()->json(['message' => 'Credit sales are disabled in settings.'], 422);
             }
@@ -172,7 +193,7 @@ class PosController extends Controller
             $payload = [
                 'branch_id' => $branch->id,
                 'shift_id' => $shift->id,
-                'customer_id' => $data['customer_id'] ?? null,
+                'customer_id' => $customerId,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $isFoc ? trim(($data['notes'] ?? '').' FOC') : ($data['notes'] ?? null),
                 'items' => $data['items'],

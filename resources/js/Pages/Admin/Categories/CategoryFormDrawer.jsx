@@ -20,6 +20,7 @@ export default function CategoryFormDrawer({
     onClose,
 }) {
     const editing = !!category;
+    const isSystem = !!category?.is_system;
     const form = useForm(emptyData());
 
     useEffect(() => {
@@ -92,37 +93,45 @@ export default function CategoryFormDrawer({
                             value={form.data.name}
                             onChange={(e) => form.setData('name', e.target.value)}
                             error={!!form.errors.name}
-                            autoFocus
+                            autoFocus={!isSystem}
+                            disabled={isSystem}
                         />
                     </Field>
                     <Field
                         label="Code"
                         error={form.errors.code}
-                        hint="Optional. If empty, we assign C01, C02, … automatically."
+                        hint={
+                            isSystem
+                                ? 'System category — code is locked.'
+                                : 'Optional. If empty, we assign C01, C02, … automatically.'
+                        }
                     >
                         <Input
                             value={form.data.code}
                             onChange={(e) => form.setData('code', e.target.value)}
                             error={!!form.errors.code}
                             placeholder="e.g. BEV"
+                            disabled={isSystem}
                         />
                     </Field>
 
-                    <Field label="Parent" error={form.errors.parent_id} hint="Optional. Nest under another category.">
-                        <select
-                            value={form.data.parent_id}
-                            onChange={(e) => form.setData('parent_id', e.target.value)}
-                            className="h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
-                        >
-                            <option value="">None (top level)</option>
-                            {availableParents.map((opt) => (
-                                <option key={opt.id} value={opt.id}>
-                                    {opt.name}
-                                    {opt.code ? ` (${opt.code})` : ''}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
+                    {!isSystem && (
+                        <Field label="Parent" error={form.errors.parent_id} hint="Optional. Nest under another category.">
+                            <select
+                                value={form.data.parent_id}
+                                onChange={(e) => form.setData('parent_id', e.target.value)}
+                                className="h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                            >
+                                <option value="">None (top level)</option>
+                                {availableParents.map((opt) => (
+                                    <option key={opt.id} value={opt.id}>
+                                        {opt.name}
+                                        {opt.code ? ` (${opt.code})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+                    )}
 
                     <Field
                         label="Default tax"
@@ -144,15 +153,22 @@ export default function CategoryFormDrawer({
                         </select>
                     </Field>
 
-                    <label className="flex items-center gap-2 text-sm text-theme-ink">
-                        <input
-                            type="checkbox"
-                            checked={form.data.is_active}
-                            onChange={(e) => form.setData('is_active', e.target.checked)}
-                            className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
-                        />
-                        Active
-                    </label>
+                    {!isSystem && (
+                        <label className="flex items-center gap-2 text-sm text-theme-ink">
+                            <input
+                                type="checkbox"
+                                checked={form.data.is_active}
+                                onChange={(e) => form.setData('is_active', e.target.checked)}
+                                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+                            />
+                            Active
+                        </label>
+                    )}
+                    {isSystem && (
+                        <p className="rounded-lg bg-theme-bg px-3 py-2 text-xs text-theme-ink-muted">
+                            System category. It cannot be deleted or renamed; default tax can still be changed.
+                        </p>
+                    )}
                 </div>
 
                 <div className="mt-auto flex justify-end gap-2 border-t border-theme-border pt-5">

@@ -315,6 +315,9 @@ class DemoSeedService
             'opening_balance' => 0,
             'balance' => 0,
         ]);
+
+        // Restore day-one masters wiped above (General category, Walk-in, etc.).
+        app(TenantBootstrapService::class)->seedDayOneMasters();
     }
 
     protected function seedDemoData(): void
@@ -325,8 +328,7 @@ class DemoSeedService
         $this->finance->seedDefaultAccounts();
 
         $pcs = Unit::query()->where('code', 'pcs')->firstOrFail();
-        $tax = Tax::query()->where('code', 'exempt')->first()
-            ?? Tax::query()->where('rate', 0)->first()
+        $tax = Tax::query()->where('code', 'gst18')->first()
             ?? Tax::query()->where('is_active', true)->orderBy('id')->firstOrFail();
 
         $cash = MoneySource::query()->where('code', 'cash')->firstOrFail();

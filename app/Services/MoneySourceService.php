@@ -26,7 +26,7 @@ class MoneySourceService
                 'balance' => 0,
                 'is_active' => true,
                 'exclude_from_dashboard_profit' => false,
-                'is_system' => false,
+                'is_system' => true,
             ],
         );
 
@@ -39,7 +39,7 @@ class MoneySourceService
                 'balance' => 0,
                 'is_active' => true,
                 'exclude_from_dashboard_profit' => false,
-                'is_system' => false,
+                'is_system' => true,
             ],
         );
 
@@ -56,6 +56,11 @@ class MoneySourceService
                 'is_system' => true,
             ],
         );
+
+        MoneySource::query()
+            ->whereIn('code', ['cash', 'card'])
+            ->where('is_system', false)
+            ->update(['is_system' => true]);
 
         $branchIds = Branch::query()->where('is_active', true)->pluck('id');
         if ($branchIds->isEmpty()) {

@@ -3,11 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\Branch;
-use App\Models\MoneySource;
-use App\Models\Tax;
-use App\Models\Unit;
 use App\Models\User;
 use App\Services\SettingService;
+use App\Services\TenantBootstrapService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -53,70 +51,7 @@ class SeedTenantDefaults implements ShouldQueue
                 );
             }
 
-            foreach ([
-                ['code' => 'pcs', 'name' => 'Piece'],
-                ['code' => 'ctn', 'name' => 'Carton'],
-                ['code' => 'kg', 'name' => 'Kilogram'],
-                ['code' => 'g', 'name' => 'Gram'],
-                ['code' => 'box', 'name' => 'Box'],
-            ] as $unit) {
-                Unit::query()->firstOrCreate(['code' => $unit['code']], [
-                    'name' => $unit['name'],
-                    'is_active' => true,
-                ]);
-            }
-
-            Tax::query()->firstOrCreate(
-                ['code' => 'exempt'],
-                ['name' => 'Exempt', 'rate' => 0, 'is_inclusive' => false, 'is_active' => true],
-            );
-
-            Tax::query()->firstOrCreate(
-                ['code' => 'gst5'],
-                ['name' => 'GST 5%', 'rate' => 5, 'is_inclusive' => false, 'is_active' => true],
-            );
-
-            Tax::query()->firstOrCreate(
-                ['code' => 'gst18'],
-                ['name' => 'GST 18%', 'rate' => 18, 'is_inclusive' => false, 'is_active' => true],
-            );
-
-            MoneySource::query()->firstOrCreate(
-                ['code' => 'cash'],
-                [
-                    'name' => 'Cash',
-                    'type' => 'CASH',
-                    'opening_balance' => 0,
-                    'balance' => 0,
-                    'is_active' => true,
-                    'is_system' => false,
-                ],
-            );
-
-            MoneySource::query()->firstOrCreate(
-                ['code' => 'card'],
-                [
-                    'name' => 'Card',
-                    'type' => 'BANK',
-                    'opening_balance' => 0,
-                    'balance' => 0,
-                    'is_active' => true,
-                    'is_system' => false,
-                ],
-            );
-
-            MoneySource::query()->firstOrCreate(
-                ['system_key' => MoneySource::SYSTEM_OWNER_WITHDRAWAL],
-                [
-                    'name' => 'Owner Withdrawal',
-                    'code' => 'owner_withdrawal',
-                    'type' => 'OWNER_DRAW',
-                    'opening_balance' => 0,
-                    'balance' => 0,
-                    'is_active' => true,
-                    'is_system' => true,
-                ],
-            );
+            app(TenantBootstrapService::class)->seedDayOneMasters();
 
             if ($branch) {
                 User::query()->where('username', 'admin')->update(['branch_id' => $branch->id]);

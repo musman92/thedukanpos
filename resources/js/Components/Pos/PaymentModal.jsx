@@ -49,18 +49,25 @@ export default function PaymentModal({
         [customers, customerId],
     );
 
-    const hasNamedCustomer = Boolean(customerId);
+    const walkInCustomerId = useMemo(() => {
+        const walkIn = customers.find((c) => c.is_walk_in);
+        return walkIn?.id != null ? String(walkIn.id) : '';
+    }, [customers]);
+
+    const hasNamedCustomer = Boolean(
+        customerId && String(customerId) !== walkInCustomerId && !selectedCustomer?.is_walk_in,
+    );
     const creditAvailable = allowCredit && hasNamedCustomer;
 
     const customerOptions = useMemo(
-        () => [
-            { value: '', label: 'Walk-in' },
-            ...customers.map((c) => ({
+        () =>
+            customers.map((c) => ({
                 value: String(c.id),
-                label: c.name,
-                meta: `${c.phone || ''} · bal ${formatMoney(c.balance, moneyCfg)}`,
+                label: c.is_walk_in ? 'Walk-in' : c.name,
+                meta: c.is_walk_in
+                    ? 'Default counter customer'
+                    : `${c.phone || ''} · bal ${formatMoney(c.balance, moneyCfg)}`,
             })),
-        ],
         [customers, moneyCfg],
     );
 
@@ -281,11 +288,19 @@ export default function PaymentModal({
                     <SearchableSelect
                         size="sm"
                         options={customerOptions}
-                        value={customerId === '' || customerId == null ? '' : String(customerId)}
-                        onChange={(v) => onCustomerChange(v === '' || v == null ? '' : String(v))}
+                        value={
+                            customerId === '' || customerId == null
+                                ? walkInCustomerId
+                                : String(customerId)
+                        }
+                        onChange={(v) =>
+                            onCustomerChange(
+                                v === '' || v == null ? walkInCustomerId : String(v),
+                            )
+                        }
                         placeholder="Walk-in"
                     />
-                    {selectedCustomer && (
+                    {selectedCustomer && !selectedCustomer.is_walk_in && (
                         <p className="mt-1 text-right text-[11px] text-theme-ink-muted">
                             Balance{' '}
                             <span

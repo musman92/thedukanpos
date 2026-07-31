@@ -221,15 +221,17 @@ export default function Index({
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </button>
-                                            <button
-                                                type="button"
-                                                title="Delete"
-                                                aria-label="Delete"
-                                                onClick={() => destroyCustomer(customer)}
-                                                className="inline-flex rounded-md p-1.5 text-theme-danger hover:bg-theme-danger/10"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                            {!customer.is_system && (
+                                                <button
+                                                    type="button"
+                                                    title="Delete"
+                                                    aria-label="Delete"
+                                                    onClick={() => destroyCustomer(customer)}
+                                                    className="inline-flex rounded-md p-1.5 text-theme-danger hover:bg-theme-danger/10"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

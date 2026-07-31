@@ -826,6 +826,11 @@ class SaleService
         }
 
         $customer = Customer::query()->lockForUpdate()->findOrFail($customerId);
+
+        if ($customer->isWalkIn()) {
+            throw new \RuntimeException('Select a customer (not walk-in) for credit / unpaid amount.');
+        }
+
         $this->customers->charge($customer, $due, "Sale {$sale->number}");
     }
 

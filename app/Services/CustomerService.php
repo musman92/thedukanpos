@@ -97,6 +97,17 @@ class CustomerService
      */
     public function update(Customer $customer, array $data): Customer
     {
+        if ($customer->is_system) {
+            $customer->update([
+                'phone' => $this->nullableString($data['phone'] ?? null),
+                'email' => $this->nullableString($data['email'] ?? null),
+                'address' => $this->nullableString($data['address'] ?? null),
+                'is_active' => true,
+            ]);
+
+            return $customer->refresh();
+        }
+
         $name = trim((string) $data['name']);
         $input = trim((string) ($data['code'] ?? ''));
         $code = $input !== ''
@@ -120,6 +131,12 @@ class CustomerService
 
     public function delete(Customer $customer): void
     {
+        if ($customer->is_system) {
+            throw ValidationException::withMessages([
+                'customer' => 'System customers cannot be deleted.',
+            ]);
+        }
+
         $salesCount = $customer->sales()->count();
         if ($salesCount > 0) {
             throw ValidationException::withMessages([

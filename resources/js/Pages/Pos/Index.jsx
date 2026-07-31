@@ -145,6 +145,17 @@ function VariantPicker({ product, showStock, moneyCfg, onPick, onClose }) {
     );
 }
 
+function resolveDefaultCustomerId(customers = [], fallbackId = null) {
+    const walkIn = customers.find((c) => c.is_walk_in);
+    if (walkIn?.id != null) {
+        return String(walkIn.id);
+    }
+    if (fallbackId != null && fallbackId !== '') {
+        return String(fallbackId);
+    }
+    return '';
+}
+
 export default function Index({
     tenant,
     branch,
@@ -154,6 +165,7 @@ export default function Index({
     categories = [],
     parked_bills: initialParked = [],
     pos_settings: posSettings = {},
+    default_customer_id: defaultCustomerId = null,
 }) {
     const allowCredit = posSettings.allow_credit !== false;
     const showStock = posSettings.show_stock !== false;
@@ -164,6 +176,10 @@ export default function Index({
         currency_position: posSettings.currency_position,
         decimal_points: posSettings.decimal_points,
     };
+    const walkInCustomerId = useMemo(
+        () => resolveDefaultCustomerId(customers, defaultCustomerId),
+        [customers, defaultCustomerId],
+    );
 
     const [q, setQ] = useState('');
     const [results, setResults] = useState([]);
@@ -175,7 +191,9 @@ export default function Index({
     const [cart, setCart] = useState([]);
     const [discountValue, setDiscountValue] = useState('');
     const [discountMode, setDiscountMode] = useState('fixed'); // fixed | percent
-    const [customerId, setCustomerId] = useState('');
+    const [customerId, setCustomerId] = useState(() =>
+        resolveDefaultCustomerId(customers, defaultCustomerId),
+    );
     const [parkedSaleId, setParkedSaleId] = useState(null);
     const [parkedBills, setParkedBills] = useState(initialParked);
     const [parkedOpen, setParkedOpen] = useState(false);
@@ -200,14 +218,14 @@ export default function Index({
     );
 
     const customerOptions = useMemo(
-        () => [
-            { value: '', label: 'Walk-in' },
-            ...customers.map((c) => ({
+        () =>
+            customers.map((c) => ({
                 value: String(c.id),
-                label: c.name,
-                meta: `${c.phone || ''} · ${formatMoney(c.balance, moneyCfg)}`,
+                label: c.is_walk_in ? 'Walk-in' : c.name,
+                meta: c.is_walk_in
+                    ? 'Default counter customer'
+                    : `${c.phone || ''} · ${formatMoney(c.balance, moneyCfg)}`,
             })),
-        ],
         [customers, moneyCfg],
     );
 
@@ -368,7 +386,7 @@ export default function Index({
         setCart([]);
         setDiscountValue('');
         setDiscountMode('fixed');
-        setCustomerId('');
+        setCustomerId(walkInCustomerId);
         setParkedSaleId(null);
         setMessage('');
         searchRef.current?.focus();
@@ -435,7 +453,9 @@ export default function Index({
             Number(bill.discount_total || 0) > 0 ? String(bill.discount_total) : '',
         );
         setDiscountMode('fixed');
-        setCustomerId(bill.customer_id ? String(bill.customer_id) : '');
+        setCustomerId(
+            bill.customer_id ? String(bill.customer_id) : walkInCustomerId,
+        );
         setParkedSaleId(bill.id);
         setParkedOpen(false);
         setMessage(`Resumed ${bill.number}`);
@@ -485,9 +505,21 @@ export default function Index({
     };
 
     const checkout = async ({ customer_id, payments, foc = false }) => {
+        const resolvedCustomerId = customer_id || walkInCustomerId || null;
+        const isWalkIn =
+            !resolvedCustomerId ||
+            String(resolvedCustomerId) === String(walkInCustomerId) ||
+            !!customers.find(
+                (c) => String(c.id) === String(resolvedCustomerId) && c.is_walk_in,
+            );
+        const creditCustomerId = isWalkIn ? null : resolvedCustomerId;
+
         if (foc) {
             // FOC: wipe payable with cart-level discount; no payments required.
-        } else if ((payments.length === 0 || !payments.some((p) => p.amount > 0)) && !customer_id) {
+        } else if (
+            (payments.length === 0 || !payments.some((p) => p.amount > 0)) &&
+            !creditCustomerId
+        ) {
             setMessage('Add a payment or select a customer for credit.');
             return;
         }
@@ -497,7 +529,7 @@ export default function Index({
             : payments.reduce((s, p) => s + Number(p.amount || 0), 0);
         const payable = Number(totals.total || 0);
 
-        if (!foc && paidSum + 0.01 < payable && !customer_id) {
+        if (!foc && paidSum + 0.01 < payable && !creditCustomerId) {
             setMessage('Select a customer for the unpaid balance.');
             return;
         }
@@ -520,7 +552,7 @@ export default function Index({
             const { data } = await axios.post(route('pos.checkout'), {
                 parked_sale_id: parkedSaleId || null,
                 ...payload,
-                customer_id: customer_id || null,
+                customer_id: resolvedCustomerId,
                 payments: foc ? [] : payments,
                 foc: Boolean(foc),
             });
@@ -531,7 +563,7 @@ export default function Index({
             setCart([]);
             setDiscountValue('');
             setDiscountMode('fixed');
-            setCustomerId('');
+            setCustomerId(walkInCustomerId);
             setParkedSaleId(null);
             setPayOpen(false);
             router.visit(route('pos.receipt', completedId));
@@ -788,9 +820,13 @@ export default function Index({
 
                             <SearchableSelect
                                 options={customerOptions}
-                                value={customerId === '' ? '' : String(customerId)}
+                                value={customerId === '' ? walkInCustomerId : String(customerId)}
                                 onChange={(v) =>
-                                    setCustomerId(v === '' || v == null ? '' : String(v))
+                                    setCustomerId(
+                                        v === '' || v == null
+                                            ? walkInCustomerId
+                                            : String(v),
+                                    )
                                 }
                                 placeholder="Walk-in"
                                 size="sm"

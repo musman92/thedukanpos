@@ -95,6 +95,19 @@ class CategoryService
      */
     public function update(Category $category, array $data): Category
     {
+        $taxId = array_key_exists('default_tax_id', $data)
+            ? $this->normalizeOptionalId($data['default_tax_id'])
+            : $category->default_tax_id;
+
+        if ($category->is_system) {
+            $category->update([
+                'default_tax_id' => $taxId,
+                'is_active' => true,
+            ]);
+
+            return $category->refresh();
+        }
+
         $name = trim((string) $data['name']);
         $input = trim((string) ($data['code'] ?? ''));
         $code = $input !== ''
@@ -104,9 +117,6 @@ class CategoryService
         $parentId = array_key_exists('parent_id', $data)
             ? $this->normalizeOptionalId($data['parent_id'])
             : $category->parent_id;
-        $taxId = array_key_exists('default_tax_id', $data)
-            ? $this->normalizeOptionalId($data['default_tax_id'])
-            : $category->default_tax_id;
 
         $this->assertNameAvailable($name, $category->id);
         $this->assertCodeAvailable($code, $category->id);
@@ -125,6 +135,12 @@ class CategoryService
 
     public function delete(Category $category): void
     {
+        if ($category->is_system) {
+            throw ValidationException::withMessages([
+                'category' => 'System categories cannot be deleted.',
+            ]);
+        }
+
         $childCount = $category->children()->count();
         if ($childCount > 0) {
             throw ValidationException::withMessages([

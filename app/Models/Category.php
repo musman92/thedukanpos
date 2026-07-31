@@ -8,13 +8,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
+    public const CODE_GENERAL = 'GENERAL';
+
     protected $fillable = [
-        'parent_id', 'name', 'code', 'default_tax_id', 'is_active',
+        'parent_id', 'name', 'code', 'default_tax_id', 'is_active', 'is_system',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'is_system' => 'boolean',
+        ];
     }
 
     public function parent(): BelongsTo

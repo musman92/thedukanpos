@@ -16,6 +16,7 @@ const emptyData = () => ({
 
 export default function CustomerFormDrawer({ open, customer = null, onClose }) {
     const editing = !!customer;
+    const isSystem = !!customer?.is_system;
     const form = useForm(emptyData());
 
     useEffect(() => {
@@ -85,19 +86,25 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                             value={form.data.name}
                             onChange={(e) => form.setData('name', e.target.value)}
                             error={!!form.errors.name}
-                            autoFocus
+                            autoFocus={!isSystem}
+                            disabled={isSystem}
                         />
                     </Field>
                     <Field
                         label="Code"
                         error={form.errors.code}
-                        hint="Optional. Blank assigns C01, C02…"
+                        hint={
+                            isSystem
+                                ? 'System customer — code is locked.'
+                                : 'Optional. Blank assigns C01, C02…'
+                        }
                     >
                         <Input
                             value={form.data.code}
                             onChange={(e) => form.setData('code', e.target.value)}
                             error={!!form.errors.code}
                             placeholder="e.g. C01"
+                            disabled={isSystem}
                         />
                     </Field>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -150,15 +157,22 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                             {' '}(use Receive payment to reduce)
                         </p>
                     )}
-                    <label className="flex items-center gap-2 text-sm text-theme-ink">
-                        <input
-                            type="checkbox"
-                            checked={form.data.is_active}
-                            onChange={(e) => form.setData('is_active', e.target.checked)}
-                            className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
-                        />
-                        Active
-                    </label>
+                    {!isSystem && (
+                        <label className="flex items-center gap-2 text-sm text-theme-ink">
+                            <input
+                                type="checkbox"
+                                checked={form.data.is_active}
+                                onChange={(e) => form.setData('is_active', e.target.checked)}
+                                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+                            />
+                            Active
+                        </label>
+                    )}
+                    {isSystem && (
+                        <p className="rounded-lg bg-theme-bg px-3 py-2 text-xs text-theme-ink-muted">
+                            System customer used as the POS default. It cannot be deleted or renamed.
+                        </p>
+                    )}
                 </div>
 
                 <div className="mt-auto flex justify-end gap-2 border-t border-theme-border pt-5">

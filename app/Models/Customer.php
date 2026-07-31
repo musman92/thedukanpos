@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
+    public const CODE_WALK_IN = 'WALKIN';
+
     protected $fillable = [
-        'name', 'code', 'phone', 'email', 'address', 'balance', 'is_active',
+        'name', 'code', 'phone', 'email', 'address', 'balance', 'is_active', 'is_system',
     ];
 
     protected function casts(): array
@@ -16,7 +18,22 @@ class Customer extends Model
         return [
             'balance' => 'decimal:4',
             'is_active' => 'boolean',
+            'is_system' => 'boolean',
         ];
+    }
+
+    public function isWalkIn(): bool
+    {
+        return (bool) $this->is_system
+            && strtoupper((string) $this->code) === self::CODE_WALK_IN;
+    }
+
+    public static function walkIn(): ?self
+    {
+        return static::query()
+            ->where('code', self::CODE_WALK_IN)
+            ->where('is_system', true)
+            ->first();
     }
 
     public function sales(): HasMany
