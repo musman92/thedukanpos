@@ -40,6 +40,14 @@ function PaymentBadge({ status }) {
     );
 }
 
+const DELIVERY_STATUS_LABELS = {
+    pending: 'Pending',
+    assigned: 'Assigned',
+    out_for_delivery: 'Out for delivery',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+};
+
 export default function Show({ sale, branch }) {
     const receiptAvailable = hasRoute('pos.receipt');
 
@@ -103,6 +111,45 @@ export default function Show({ sale, branch }) {
                 </div>
             </div>
 
+            {sale.is_delivery && (
+                <div className="mb-4 rounded-xl border border-sky-500/25 bg-sky-500/5 px-4 py-3 text-sm">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-theme-ink">Delivery</p>
+                        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                            {DELIVERY_STATUS_LABELS[sale.delivery_status] ||
+                                sale.delivery_status ||
+                                'Pending'}
+                        </span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-theme-ink-muted">
+                                Address
+                            </p>
+                            <p className="mt-0.5 whitespace-pre-line font-medium text-theme-ink">
+                                {sale.delivery_address || '—'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-theme-ink-muted">
+                                Rider
+                            </p>
+                            <p className="mt-0.5 font-medium text-theme-ink">
+                                {sale.rider?.name || 'Unassigned'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-theme-ink-muted">
+                                Delivery charge
+                            </p>
+                            <p className="mt-0.5 tabular-nums font-medium text-theme-ink">
+                                {money(sale.delivery_charge)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="dp-card mb-4 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
@@ -164,6 +211,12 @@ export default function Show({ sale, branch }) {
                             <span className="text-theme-ink-muted">Discount</span>
                             <span className="tabular-nums">{money(sale.discount_total)}</span>
                         </div>
+                        {sale.is_delivery && Number(sale.delivery_charge || 0) > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-theme-ink-muted">Delivery</span>
+                                <span className="tabular-nums">{money(sale.delivery_charge)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between border-t border-theme-border pt-1 font-semibold">
                             <span>Total</span>
                             <span className="tabular-nums">{money(sale.total)}</span>

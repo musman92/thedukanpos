@@ -64,7 +64,7 @@ class SaleService
         );
 
         $sales = Sale::query()
-            ->with(['customer:id,name', 'cashier:id,name,username'])
+            ->with(['customer:id,name', 'cashier:id,name,username', 'rider:id,name,username'])
             ->where('branch_id', $branch->id)
             ->where('status', '!=', Sale::STATUS_PARKED)
             ->when($q !== '', function ($query) use ($q) {
@@ -115,8 +115,9 @@ class SaleService
             'items.variant:id,name,short_code',
             'items.unit:id,name,code',
             'payments.moneySource:id,name',
-            'customer:id,name,balance',
+            'customer:id,name,balance,phone,address',
             'cashier:id,name,username',
+            'rider:id,name,username',
             'branch:id,name',
             'returns:id,number,return_date,total,refunded_total',
         ]);
@@ -153,6 +154,14 @@ class SaleService
                     'name' => $sale->cashier->name ?: $sale->cashier->username,
                 ]
                 : null,
+            'is_delivery' => (bool) $sale->is_delivery,
+            'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
+            'rider' => $sale->rider
+                ? [
+                    'id' => $sale->rider->id,
+                    'name' => $sale->rider->name ?: $sale->rider->username,
+                ]
+                : null,
         ];
     }
 
@@ -166,6 +175,11 @@ class SaleService
             'subtotal' => round((float) $sale->subtotal, 2),
             'tax_total' => round((float) $sale->tax_total, 2),
             'discount_total' => round((float) $sale->discount_total, 2),
+            'is_delivery' => (bool) $sale->is_delivery,
+            'delivery_charge' => round((float) ($sale->delivery_charge ?? 0), 2),
+            'delivery_address' => $sale->delivery_address,
+            'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
+            'rider_id' => $sale->rider_id,
             'notes' => $sale->notes,
             'status' => $sale->status,
             'branch' => $sale->branch
@@ -227,6 +241,7 @@ class SaleService
             $this->assertOpenShift($data['shift_id'] ?? null);
 
             $customerId = $data['customer_id'] ?? null;
+            $delivery = $this->resolveDelivery($data);
 
             $sale = Sale::query()->create([
                 'number' => $this->nextNumber(),
@@ -236,6 +251,7 @@ class SaleService
                 'cashier_id' => Auth::id(),
                 'status' => Sale::STATUS_COMPLETED,
                 'notes' => $data['notes'] ?? null,
+                ...$delivery,
             ]);
 
             $totals = $this->writeItems(
@@ -245,12 +261,13 @@ class SaleService
                 discountTotal: (float) ($data['discount_total'] ?? 0),
                 deductStock: true,
             );
+            $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
 
             $paid = $this->recordPayments($sale, $data['payments'] ?? []);
             $this->applyCreditIfNeeded(
                 sale: $sale,
                 customerId: $customerId,
-                total: $totals['total'],
+                total: $grandTotal,
                 paid: $paid,
                 allowCredit: ($data['allow_credit'] ?? true) !== false,
             );
@@ -259,15 +276,15 @@ class SaleService
                 'subtotal' => $totals['subtotal'],
                 'tax_total' => $totals['tax_total'],
                 'discount_total' => $totals['discount_total'],
-                'total' => $totals['total'],
+                'total' => $grandTotal,
                 'paid_total' => $paid,
             ]);
 
             app(ActivityLogger::class)->log(
                 'sale.checkout',
-                "Sale {$sale->number} total {$totals['total']}",
+                "Sale {$sale->number} total {$grandTotal}",
                 $sale,
-                ['total' => $totals['total'], 'paid' => $paid, 'due' => max(0, $totals['total'] - $paid)],
+                ['total' => $grandTotal, 'paid' => $paid, 'due' => max(0, $grandTotal - $paid)],
             );
 
             return $sale->load(['items.product', 'items.variant', 'payments.moneySource', 'customer']);
@@ -297,6 +314,8 @@ class SaleService
         return DB::transaction(function () use ($data) {
             $this->assertOpenShift($data['shift_id'] ?? null);
 
+            $delivery = $this->resolveDelivery($data);
+
             $sale = Sale::query()->create([
                 'number' => $this->nextNumber(),
                 'branch_id' => $data['branch_id'],
@@ -306,6 +325,7 @@ class SaleService
                 'status' => Sale::STATUS_PARKED,
                 'notes' => $data['notes'] ?? null,
                 'paid_total' => 0,
+                ...$delivery,
             ]);
 
             $totals = $this->writeItems(
@@ -315,12 +335,13 @@ class SaleService
                 discountTotal: (float) ($data['discount_total'] ?? 0),
                 deductStock: false,
             );
+            $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
 
             $sale->update([
                 'subtotal' => $totals['subtotal'],
                 'tax_total' => $totals['tax_total'],
                 'discount_total' => $totals['discount_total'],
-                'total' => $totals['total'],
+                'total' => $grandTotal,
                 'paid_total' => 0,
             ]);
 
@@ -328,7 +349,7 @@ class SaleService
                 'sale.park',
                 "Parked bill {$sale->number}",
                 $sale,
-                ['total' => $totals['total'], 'lines' => count($data['items'])],
+                ['total' => $grandTotal, 'lines' => count($data['items'])],
             );
 
             return $sale->load(['items.product', 'items.variant', 'items.unit', 'customer']);
@@ -357,11 +378,13 @@ class SaleService
 
         return DB::transaction(function () use ($sale, $data) {
             $sale->items()->delete();
+            $delivery = $this->resolveDelivery($data);
 
             $sale->update([
                 'customer_id' => $data['customer_id'] ?? null,
                 'cashier_id' => Auth::id(),
                 'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?? null) : $sale->notes,
+                ...$delivery,
             ]);
 
             $totals = $this->writeItems(
@@ -371,12 +394,13 @@ class SaleService
                 discountTotal: (float) ($data['discount_total'] ?? 0),
                 deductStock: false,
             );
+            $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
 
             $sale->update([
                 'subtotal' => $totals['subtotal'],
                 'tax_total' => $totals['tax_total'],
                 'discount_total' => $totals['discount_total'],
-                'total' => $totals['total'],
+                'total' => $grandTotal,
                 'paid_total' => 0,
             ]);
 
@@ -414,12 +438,14 @@ class SaleService
             $sale->items()->delete();
 
             $customerId = $data['customer_id'] ?? null;
+            $delivery = $this->resolveDelivery($data);
 
             $sale->update([
                 'customer_id' => $customerId,
                 'cashier_id' => Auth::id(),
                 'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?? null) : $sale->notes,
                 'status' => Sale::STATUS_COMPLETED,
+                ...$delivery,
             ]);
 
             $totals = $this->writeItems(
@@ -429,12 +455,13 @@ class SaleService
                 discountTotal: (float) ($data['discount_total'] ?? 0),
                 deductStock: true,
             );
+            $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
 
             $paid = $this->recordPayments($sale, $data['payments'] ?? []);
             $this->applyCreditIfNeeded(
                 sale: $sale,
                 customerId: $customerId,
-                total: $totals['total'],
+                total: $grandTotal,
                 paid: $paid,
                 allowCredit: ($data['allow_credit'] ?? true) !== false,
             );
@@ -443,15 +470,15 @@ class SaleService
                 'subtotal' => $totals['subtotal'],
                 'tax_total' => $totals['tax_total'],
                 'discount_total' => $totals['discount_total'],
-                'total' => $totals['total'],
+                'total' => $grandTotal,
                 'paid_total' => $paid,
             ]);
 
             app(ActivityLogger::class)->log(
                 'sale.checkout',
-                "Sale {$sale->number} total {$totals['total']} (from parked)",
+                "Sale {$sale->number} total {$grandTotal} (from parked)",
                 $sale,
-                ['total' => $totals['total'], 'paid' => $paid, 'due' => max(0, $totals['total'] - $paid)],
+                ['total' => $grandTotal, 'paid' => $paid, 'due' => max(0, $grandTotal - $paid)],
             );
 
             return $sale->fresh()->load(['items.product', 'items.variant', 'payments.moneySource', 'customer']);
@@ -490,7 +517,7 @@ class SaleService
         $end = now($tz)->endOfDay()->utc();
 
         return Sale::query()
-            ->with(['customer:id,name', 'cashier:id,name,username'])
+            ->with(['customer:id,name', 'cashier:id,name,username', 'rider:id,name,username'])
             ->withCount('items')
             ->where('branch_id', $branchId)
             ->where('status', '!=', Sale::STATUS_PARKED)
@@ -504,6 +531,8 @@ class SaleService
                     ...$this->serializeList($sale),
                     'item_count' => (int) $sale->items_count,
                     'status' => $sale->status,
+                    'delivery_charge' => round((float) ($sale->delivery_charge ?? 0), 2),
+                    'delivery_address' => $sale->delivery_address,
                 ];
             })
             ->values()
@@ -516,8 +545,9 @@ class SaleService
     public function posSaleDetail(Sale $sale): array
     {
         $sale->loadMissing([
-            'customer:id,name',
+            'customer:id,name,phone,address',
             'cashier:id,name,username',
+            'rider:id,name,username',
             'branch:id,name',
             'items.product:id,name',
             'items.variant:id,name,short_code',
@@ -638,6 +668,10 @@ class SaleService
             'subtotal' => round((float) $sale->subtotal, 2),
             'tax_total' => round((float) $sale->tax_total, 2),
             'total' => round((float) $sale->total, 2),
+            'is_delivery' => (bool) $sale->is_delivery,
+            'delivery_charge' => round((float) $sale->delivery_charge, 2),
+            'delivery_address' => $sale->delivery_address,
+            'rider_id' => $sale->rider_id,
             'notes' => $sale->notes,
             'updated_at' => format_company_datetime($sale->updated_at),
             'item_count' => $sale->items->count(),
@@ -679,6 +713,196 @@ class SaleService
         if (! $shift->isOpen()) {
             throw new \RuntimeException('Shift is closed.');
         }
+    }
+
+    /**
+     * @param  array{
+     *   customer_id?:int|null,
+     *   is_delivery?:bool,
+     *   delivery_charge?:float|int|string,
+     *   delivery_address?:string|null,
+     *   rider_id?:int|null
+     * }  $data
+     * @return array{
+     *   is_delivery: bool,
+     *   delivery_charge: float,
+     *   delivery_address: string|null,
+     *   delivery_status: string|null,
+     *   rider_id: int|null
+     * }
+     */
+    protected function resolveDelivery(array $data): array
+    {
+        $isDelivery = (bool) ($data['is_delivery'] ?? false);
+        if (! $isDelivery) {
+            return [
+                'is_delivery' => false,
+                'delivery_charge' => 0.0,
+                'delivery_address' => null,
+                'delivery_status' => null,
+                'rider_id' => null,
+            ];
+        }
+
+        if (! app(SettingService::class)->allowPosDelivery()) {
+            throw new \RuntimeException('Delivery is disabled in company settings.');
+        }
+
+        $customerId = $data['customer_id'] ?? null;
+        if (! $customerId) {
+            throw new \RuntimeException('Select or create a customer with an address for delivery.');
+        }
+
+        $customer = Customer::query()->findOrFail($customerId);
+        if ($customer->isWalkIn()) {
+            throw new \RuntimeException('Delivery requires a named customer with an address.');
+        }
+
+        $address = trim((string) ($data['delivery_address'] ?? ''));
+        if ($address === '') {
+            $address = trim((string) ($customer->address ?? ''));
+        }
+
+        if ($address === '') {
+            throw new \RuntimeException('Customer address is required for delivery.');
+        }
+
+        // Keep customer master address in sync when POS sends a delivery address.
+        if (trim((string) ($customer->address ?? '')) === '') {
+            $customer->address = $address;
+            $customer->save();
+        }
+
+        $riderId = isset($data['rider_id']) && $data['rider_id'] !== '' && $data['rider_id'] !== null
+            ? (int) $data['rider_id']
+            : null;
+
+        if ($riderId) {
+            $rider = \App\Models\User::query()
+                ->where('id', $riderId)
+                ->where('is_active', true)
+                ->first();
+            if (! $rider) {
+                throw new \RuntimeException('Selected rider is not available.');
+            }
+        }
+
+        return [
+            'is_delivery' => true,
+            'delivery_charge' => max(0, round((float) ($data['delivery_charge'] ?? 0), 4)),
+            'delivery_address' => $address,
+            'delivery_status' => $riderId ? Sale::DELIVERY_ASSIGNED : Sale::DELIVERY_PENDING,
+            'rider_id' => $riderId,
+        ];
+    }
+
+    /**
+     * Open / recent delivery orders for POS management.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listDeliveries(int $branchId, ?string $status = null): array
+    {
+        $query = Sale::query()
+            ->with([
+                'customer:id,name,phone',
+                'cashier:id,name,username',
+                'rider:id,name,username',
+            ])
+            ->withCount('items')
+            ->where('branch_id', $branchId)
+            ->where('is_delivery', true)
+            ->where('status', Sale::STATUS_COMPLETED)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(150);
+
+        if ($status && in_array($status, Sale::deliveryStatuses(), true)) {
+            $query->where('delivery_status', $status);
+        } else {
+            // Default: active pipeline (not delivered/cancelled), plus today's delivered.
+            $tz = (string) (company_settings()['timezone'] ?? config('app.timezone', 'UTC'));
+            $start = now($tz)->startOfDay()->utc();
+            $query->where(function ($q) use ($start) {
+                $q->whereNotIn('delivery_status', [Sale::DELIVERY_DELIVERED, Sale::DELIVERY_CANCELLED])
+                    ->orWhere(function ($inner) use ($start) {
+                        $inner->whereIn('delivery_status', [Sale::DELIVERY_DELIVERED, Sale::DELIVERY_CANCELLED])
+                            ->where('created_at', '>=', $start);
+                    });
+            });
+        }
+
+        return $query->get()
+            ->map(function (Sale $sale) {
+                return [
+                    ...$this->serializeList($sale),
+                    'item_count' => (int) $sale->items_count,
+                    'status' => $sale->status,
+                    'delivery_charge' => round((float) ($sale->delivery_charge ?? 0), 2),
+                    'delivery_address' => $sale->delivery_address,
+                    'customer' => $sale->customer
+                        ? [
+                            'id' => $sale->customer->id,
+                            'name' => $sale->customer->name,
+                            'phone' => $sale->customer->phone,
+                        ]
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array{delivery_status?:string, rider_id?:int|null}  $data
+     */
+    public function updateDelivery(Sale $sale, array $data): Sale
+    {
+        if (! $sale->is_delivery || $sale->status !== Sale::STATUS_COMPLETED) {
+            throw new \RuntimeException('Only completed delivery orders can be updated.');
+        }
+
+        $status = isset($data['delivery_status'])
+            ? (string) $data['delivery_status']
+            : (string) ($sale->delivery_status ?: Sale::DELIVERY_PENDING);
+
+        if (! in_array($status, Sale::deliveryStatuses(), true)) {
+            throw new \RuntimeException('Invalid delivery status.');
+        }
+
+        $riderId = array_key_exists('rider_id', $data)
+            ? ($data['rider_id'] !== null && $data['rider_id'] !== '' ? (int) $data['rider_id'] : null)
+            : $sale->rider_id;
+
+        if ($riderId) {
+            $rider = \App\Models\User::query()
+                ->where('id', $riderId)
+                ->where('is_active', true)
+                ->first();
+            if (! $rider) {
+                throw new \RuntimeException('Selected rider is not available.');
+            }
+        }
+
+        if ($status === Sale::DELIVERY_ASSIGNED && ! $riderId) {
+            throw new \RuntimeException('Assign a rider before marking as assigned.');
+        }
+
+        if (in_array($status, [Sale::DELIVERY_OUT, Sale::DELIVERY_DELIVERED], true) && ! $riderId) {
+            throw new \RuntimeException('A rider is required for this delivery status.');
+        }
+
+        // Auto-bump pending → assigned when a rider is set.
+        if ($riderId && $status === Sale::DELIVERY_PENDING) {
+            $status = Sale::DELIVERY_ASSIGNED;
+        }
+
+        $sale->update([
+            'delivery_status' => $status,
+            'rider_id' => $riderId,
+        ]);
+
+        return $sale->fresh()->load(['customer:id,name,phone', 'rider:id,name,username', 'cashier:id,name,username']);
     }
 
     /**

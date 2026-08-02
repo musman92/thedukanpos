@@ -56,11 +56,14 @@ Route::middleware(['tenancy.session', 'auth'])->group(function () {
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
     Route::get('/pos/catalog', [PosController::class, 'catalog'])->name('pos.catalog');
+    Route::post('/pos/customers', [PosController::class, 'storeCustomer'])->name('pos.customers.store');
     Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
     Route::get('/pos/parked', [PosController::class, 'parked'])->name('pos.parked');
     Route::get('/pos/today', [PosController::class, 'today'])->name('pos.today');
     Route::get('/pos/today/{sale}', [PosController::class, 'todayShow'])->name('pos.today.show');
     Route::post('/pos/today/{sale}/void', [PosController::class, 'todayVoid'])->name('pos.today.void');
+    Route::get('/pos/deliveries', [PosController::class, 'deliveries'])->name('pos.deliveries');
+    Route::patch('/pos/deliveries/{sale}', [PosController::class, 'updateDelivery'])->name('pos.deliveries.update');
     Route::post('/pos/parked', [PosController::class, 'park'])->name('pos.park');
     Route::put('/pos/parked/{sale}', [PosController::class, 'updateParked'])->name('pos.parked.update');
     Route::delete('/pos/parked/{sale}', [PosController::class, 'discardParked'])->name('pos.parked.discard');
@@ -343,6 +346,8 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::put('/tenants/{tenant}/billing', [TenantController::class, 'updateBilling'])->name('tenants.billing');
         Route::post('/tenants/{tenant}/support-login', [TenantController::class, 'createSupportLogin'])->name('tenants.support-login');
         Route::post('/tenants/{tenant}/seed-demo', [TenantController::class, 'seedDemo'])->name('tenants.seed-demo');
+        Route::post('/tenants/{tenant}/addons/{addon}/install', [TenantController::class, 'installAddon'])->name('tenants.addons.install');
+        Route::delete('/tenants/{tenant}/addons/{addon}', [TenantController::class, 'removeAddon'])->name('tenants.addons.remove');
 
         Route::get('/invoices', [PlatformInvoiceController::class, 'index'])->name('invoices.index');
         Route::post('/invoices', [PlatformInvoiceController::class, 'store'])->name('invoices.store');

@@ -1,5 +1,7 @@
+import DeliveryOrdersDrawer from '@/Components/Pos/DeliveryOrdersDrawer';
 import PaymentModal from '@/Components/Pos/PaymentModal';
 import ParkedBillsDrawer from '@/Components/Pos/ParkedBillsDrawer';
+import QuickCustomerModal from '@/Components/Pos/QuickCustomerModal';
 import TodayHistoryDrawer from '@/Components/Pos/TodayHistoryDrawer';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
 import { formatMoney } from '@/lib/money';
@@ -20,6 +22,8 @@ import {
     Receipt,
     Search,
     Trash2,
+    Truck,
+    UserPlus,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -166,8 +170,10 @@ export default function Index({
     parked_bills: initialParked = [],
     pos_settings: posSettings = {},
     default_customer_id: defaultCustomerId = null,
+    riders = [],
 }) {
     const allowCredit = posSettings.allow_credit !== false;
+    const enableDelivery = !!posSettings.enable_delivery;
     const showStock = posSettings.show_stock !== false;
     const showProductImage = posSettings.show_product_image !== false;
     const catalogMode = posSettings.catalog_mode === 'grouped' ? 'grouped' : 'flat';
@@ -176,9 +182,10 @@ export default function Index({
         currency_position: posSettings.currency_position,
         decimal_points: posSettings.decimal_points,
     };
+    const [customerList, setCustomerList] = useState(customers);
     const walkInCustomerId = useMemo(
-        () => resolveDefaultCustomerId(customers, defaultCustomerId),
-        [customers, defaultCustomerId],
+        () => resolveDefaultCustomerId(customerList, defaultCustomerId),
+        [customerList, defaultCustomerId],
     );
 
     const [q, setQ] = useState('');
@@ -194,12 +201,18 @@ export default function Index({
     const [customerId, setCustomerId] = useState(() =>
         resolveDefaultCustomerId(customers, defaultCustomerId),
     );
+    const [isDelivery, setIsDelivery] = useState(false);
+    const [deliveryCharge, setDeliveryCharge] = useState('');
+    const [deliveryAddress, setDeliveryAddress] = useState('');
+    const [riderId, setRiderId] = useState('');
+    const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
     const [parkedSaleId, setParkedSaleId] = useState(null);
     const [parkedBills, setParkedBills] = useState(initialParked);
     const [parkedOpen, setParkedOpen] = useState(false);
     const [todayOpen, setTodayOpen] = useState(false);
     const [todaySales, setTodaySales] = useState([]);
     const [todayLoading, setTodayLoading] = useState(false);
+    const [deliveryOpen, setDeliveryOpen] = useState(false);
     const [payOpen, setPayOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [busy, setBusy] = useState(false);
@@ -212,22 +225,40 @@ export default function Index({
     const products = isSearching ? results : catalog;
     const productsLoading = isSearching ? searching : catalogLoading;
 
+    const deliveryChargeAmount = isDelivery ? Number(deliveryCharge || 0) : 0;
     const totals = useMemo(
-        () => cartTotals(cart, discountValue, discountMode),
-        [cart, discountValue, discountMode],
+        () => cartTotals(cart, discountValue, discountMode, deliveryChargeAmount),
+        [cart, discountValue, discountMode, deliveryChargeAmount],
+    );
+
+    const selectedCustomer = useMemo(
+        () => customerList.find((c) => String(c.id) === String(customerId)) || null,
+        [customerList, customerId],
     );
 
     const customerOptions = useMemo(
         () =>
-            customers.map((c) => ({
+            customerList.map((c) => ({
                 value: String(c.id),
                 label: c.is_walk_in ? 'Walk-in' : c.name,
                 meta: c.is_walk_in
                     ? 'Default counter customer'
                     : `${c.phone || ''} · ${formatMoney(c.balance, moneyCfg)}`,
             })),
-        [customers, moneyCfg],
+        [customerList, moneyCfg],
     );
+
+    const riderOptions = useMemo(
+        () => [
+            { value: '', label: 'No rider yet' },
+            ...riders.map((r) => ({ value: String(r.id), label: r.name })),
+        ],
+        [riders],
+    );
+
+    useEffect(() => {
+        setCustomerList(customers);
+    }, [customers]);
 
     useEffect(() => {
         searchRef.current?.focus();
@@ -387,14 +418,73 @@ export default function Index({
         setDiscountValue('');
         setDiscountMode('fixed');
         setCustomerId(walkInCustomerId);
+        setIsDelivery(false);
+        setDeliveryCharge('');
+        setDeliveryAddress('');
+        setRiderId('');
         setParkedSaleId(null);
         setMessage('');
         searchRef.current?.focus();
     };
 
+    const selectCustomer = (id) => {
+        const nextId = id === '' || id == null ? walkInCustomerId : String(id);
+        setCustomerId(nextId);
+        const customer = customerList.find((c) => String(c.id) === String(nextId));
+        if (isDelivery) {
+            if (!customer || customer.is_walk_in) {
+                setDeliveryAddress('');
+            } else {
+                setDeliveryAddress(customer.address || '');
+            }
+        }
+    };
+
+    const toggleDelivery = (on) => {
+        setIsDelivery(on);
+        if (!on) {
+            setDeliveryCharge('');
+            setDeliveryAddress('');
+            setRiderId('');
+            setMessage('');
+            return;
+        }
+
+        const customer = customerList.find((c) => String(c.id) === String(customerId));
+        // Only force quick-create when Walk-in / no customer is selected.
+        if (!customer || customer.is_walk_in) {
+            setMessage('Delivery needs a named customer — create one or pick from the list.');
+            setQuickCustomerOpen(true);
+            setDeliveryAddress('');
+            return;
+        }
+
+        setDeliveryAddress(customer.address || '');
+        if (!String(customer.address || '').trim()) {
+            setMessage('Enter a delivery address for this customer.');
+        } else {
+            setMessage('');
+        }
+    };
+
+    const onQuickCustomerCreated = (customer) => {
+        setCustomerList((prev) => {
+            const without = prev.filter((c) => String(c.id) !== String(customer.id));
+            return [customer, ...without];
+        });
+        setCustomerId(String(customer.id));
+        setIsDelivery(true);
+        setDeliveryAddress(customer.address || '');
+        setMessage('');
+    };
+
     const cartPayload = () => ({
         customer_id: customerId || null,
         discount_total: Number(totals.discount || 0),
+        is_delivery: isDelivery,
+        delivery_charge: isDelivery ? Number(deliveryCharge || 0) : 0,
+        delivery_address: isDelivery ? deliveryAddress.trim() : null,
+        rider_id: isDelivery && riderId ? Number(riderId) : null,
         items: cart.map((l) => ({
             variant_id: l.variant_id,
             unit_id: l.unit_id,
@@ -456,6 +546,12 @@ export default function Index({
         setCustomerId(
             bill.customer_id ? String(bill.customer_id) : walkInCustomerId,
         );
+        setIsDelivery(!!bill.is_delivery);
+        setDeliveryCharge(
+            Number(bill.delivery_charge || 0) > 0 ? String(bill.delivery_charge) : '',
+        );
+        setDeliveryAddress(bill.delivery_address || '');
+        setRiderId(bill.rider_id ? String(bill.rider_id) : '');
         setParkedSaleId(bill.id);
         setParkedOpen(false);
         setMessage(`Resumed ${bill.number}`);
@@ -500,6 +596,17 @@ export default function Index({
             return;
         }
         if (!cart.length) return;
+        if (isDelivery) {
+            if (!selectedCustomer || selectedCustomer.is_walk_in) {
+                setMessage('Delivery needs a named customer with an address.');
+                setQuickCustomerOpen(true);
+                return;
+            }
+            if (!deliveryAddress.trim()) {
+                setMessage('Enter the delivery address.');
+                return;
+            }
+        }
         setMessage('');
         setPayOpen(true);
     };
@@ -509,7 +616,7 @@ export default function Index({
         const isWalkIn =
             !resolvedCustomerId ||
             String(resolvedCustomerId) === String(walkInCustomerId) ||
-            !!customers.find(
+            !!customerList.find(
                 (c) => String(c.id) === String(resolvedCustomerId) && c.is_walk_in,
             );
         const creditCustomerId = isWalkIn ? null : resolvedCustomerId;
@@ -543,10 +650,14 @@ export default function Index({
         try {
             const payload = cartPayload();
             if (foc) {
-                // Discount out the full pre-discount payable (subtotal + tax).
+                // Discount out the full pre-discount payable (subtotal + tax). Delivery not used on FOC.
                 payload.discount_total = Number(
                     (Number(totals.subtotal || 0) + Number(totals.tax || 0)).toFixed(4),
                 );
+                payload.is_delivery = false;
+                payload.delivery_charge = 0;
+                payload.delivery_address = null;
+                payload.rider_id = null;
             }
 
             const { data } = await axios.post(route('pos.checkout'), {
@@ -564,6 +675,10 @@ export default function Index({
             setDiscountValue('');
             setDiscountMode('fixed');
             setCustomerId(walkInCustomerId);
+            setIsDelivery(false);
+            setDeliveryCharge('');
+            setDeliveryAddress('');
+            setRiderId('');
             setParkedSaleId(null);
             setPayOpen(false);
             router.visit(route('pos.receipt', completedId));
@@ -607,6 +722,16 @@ export default function Index({
                             <History className="h-3.5 w-3.5" strokeWidth={2} />
                             <span className="hidden sm:inline">Today</span>
                         </button>
+                        {enableDelivery && (
+                            <button
+                                type="button"
+                                onClick={() => setDeliveryOpen(true)}
+                                className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            >
+                                <Truck className="h-3.5 w-3.5" strokeWidth={2} />
+                                <span className="hidden sm:inline">Delivery</span>
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => setParkedOpen(true)}
@@ -821,17 +946,19 @@ export default function Index({
                             <SearchableSelect
                                 options={customerOptions}
                                 value={customerId === '' ? walkInCustomerId : String(customerId)}
-                                onChange={(v) =>
-                                    setCustomerId(
-                                        v === '' || v == null
-                                            ? walkInCustomerId
-                                            : String(v),
-                                    )
-                                }
+                                onChange={selectCustomer}
                                 placeholder="Walk-in"
                                 size="sm"
                                 className="min-w-0 flex-1"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setQuickCustomerOpen(true)}
+                                className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-theme-ink-muted transition hover:bg-theme-bg hover:text-theme-primary"
+                                title="Quick add customer"
+                            >
+                                <UserPlus className="h-3.5 w-3.5" />
+                            </button>
 
                             {cart.length > 0 && (
                                 <button
@@ -979,6 +1106,61 @@ export default function Index({
                                     </span>
                                 </div>
 
+                                {enableDelivery && (
+                                    <div className="space-y-1.5 rounded-lg border border-theme-border bg-theme-bg px-2.5 py-2">
+                                        <label className="flex items-center justify-between gap-2 text-theme-ink">
+                                            <span className="text-sm font-medium">Delivery</span>
+                                            <input
+                                                type="checkbox"
+                                                checked={isDelivery}
+                                                onChange={(e) => toggleDelivery(e.target.checked)}
+                                                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+                                            />
+                                        </label>
+                                        {isDelivery && (
+                                            <>
+                                                <div className="flex items-center justify-between gap-2 text-theme-ink-soft">
+                                                    <span className="shrink-0 text-xs">Charge</span>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={deliveryCharge}
+                                                        onChange={(e) =>
+                                                            setDeliveryCharge(e.target.value)
+                                                        }
+                                                        placeholder="0.00"
+                                                        className="pos-qty-input h-7 w-24 rounded-md border border-theme-border bg-theme-surface px-2 text-right text-xs tabular-nums text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                                    />
+                                                </div>
+                                                <textarea
+                                                    rows={2}
+                                                    value={deliveryAddress}
+                                                    onChange={(e) =>
+                                                        setDeliveryAddress(e.target.value)
+                                                    }
+                                                    placeholder="Delivery address"
+                                                    className="w-full rounded-md border border-theme-border bg-theme-surface px-2 py-1.5 text-xs text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                                />
+                                                <select
+                                                    value={riderId}
+                                                    onChange={(e) => setRiderId(e.target.value)}
+                                                    className="w-full rounded-md border border-theme-border bg-theme-surface px-2 py-1.5 text-xs text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                                >
+                                                    {riderOptions.map((opt) => (
+                                                        <option
+                                                            key={opt.value || 'none'}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="flex items-center justify-between gap-3 border-t border-theme-border pt-2">
                                     <span className="font-semibold text-theme-ink">Total</span>
                                     <span className="text-base font-bold tabular-nums text-theme-primary">
@@ -1028,6 +1210,15 @@ export default function Index({
                 }}
             />
 
+            {enableDelivery && (
+                <DeliveryOrdersDrawer
+                    open={deliveryOpen}
+                    onClose={() => setDeliveryOpen(false)}
+                    moneyCfg={moneyCfg}
+                    riders={riders}
+                />
+            )}
+
             <VariantPicker
                 product={variantPicker}
                 showStock={showStock}
@@ -1046,6 +1237,12 @@ export default function Index({
                 onDiscard={discardParked}
             />
 
+            <QuickCustomerModal
+                open={quickCustomerOpen}
+                onClose={() => setQuickCustomerOpen(false)}
+                onCreated={onQuickCustomerCreated}
+            />
+
             <PaymentModal
                 open={payOpen}
                 onClose={() => {
@@ -1055,9 +1252,9 @@ export default function Index({
                 busy={busy}
                 totals={totals}
                 moneySources={moneySources}
-                customers={customers}
+                customers={customerList}
                 customerId={customerId}
-                onCustomerChange={setCustomerId}
+                onCustomerChange={selectCustomer}
                 allowCredit={allowCredit}
                 moneyCfg={moneyCfg}
                 error={message}

@@ -180,6 +180,7 @@ class ReportHubController extends Controller
                     'number' => $sale->number,
                     'created_at' => format_company_datetime($sale->created_at),
                     'status' => $sale->status,
+                    'is_delivery' => (bool) $sale->is_delivery,
                     'payment_status' => $paid + 0.01 >= $total
                         ? 'paid'
                         : ($paid > 0.01 ? 'partial' : 'pending'),

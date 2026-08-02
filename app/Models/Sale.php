@@ -16,6 +16,30 @@ class Sale extends Model
 
     public const STATUS_RETURNED = 'returned';
 
+    public const DELIVERY_PENDING = 'pending';
+
+    public const DELIVERY_ASSIGNED = 'assigned';
+
+    public const DELIVERY_OUT = 'out_for_delivery';
+
+    public const DELIVERY_DELIVERED = 'delivered';
+
+    public const DELIVERY_CANCELLED = 'cancelled';
+
+    /**
+     * @return list<string>
+     */
+    public static function deliveryStatuses(): array
+    {
+        return [
+            self::DELIVERY_PENDING,
+            self::DELIVERY_ASSIGNED,
+            self::DELIVERY_OUT,
+            self::DELIVERY_DELIVERED,
+            self::DELIVERY_CANCELLED,
+        ];
+    }
+
     protected $fillable = [
         'number',
         'branch_id',
@@ -29,6 +53,11 @@ class Sale extends Model
         'total',
         'paid_total',
         'notes',
+        'is_delivery',
+        'delivery_charge',
+        'delivery_address',
+        'delivery_status',
+        'rider_id',
     ];
 
     protected function casts(): array
@@ -39,6 +68,8 @@ class Sale extends Model
             'discount_total' => 'decimal:4',
             'total' => 'decimal:4',
             'paid_total' => 'decimal:4',
+            'is_delivery' => 'boolean',
+            'delivery_charge' => 'decimal:4',
         ];
     }
 
@@ -60,6 +91,11 @@ class Sale extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function rider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rider_id');
     }
 
     public function items(): HasMany

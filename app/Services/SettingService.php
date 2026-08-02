@@ -82,6 +82,7 @@ class SettingService
             'list_page_limit' => 15,
             'activity_logging_enabled' => true,
             'pos_allow_credit' => true,
+            'pos_enable_delivery' => false,
             'pos_show_stock' => true,
             'pos_show_product_image' => true,
             'pos_catalog_mode' => 'flat',
@@ -184,6 +185,7 @@ class SettingService
             'time_format' => $all['time_format'],
             'week_starts_on' => $all['week_starts_on'],
             'pos_allow_credit' => (bool) $all['pos_allow_credit'],
+            'pos_enable_delivery' => (bool) ($all['pos_enable_delivery'] ?? false),
             'pos_show_stock' => (bool) $all['pos_show_stock'],
             'pos_show_product_image' => (bool) $all['pos_show_product_image'],
             'pos_catalog_mode' => in_array($all['pos_catalog_mode'] ?? 'flat', ['flat', 'grouped'], true)
@@ -351,6 +353,11 @@ class SettingService
     public function allowPosCredit(): bool
     {
         return (bool) $this->all()['pos_allow_credit'];
+    }
+
+    public function allowPosDelivery(): bool
+    {
+        return (bool) ($this->all()['pos_enable_delivery'] ?? false);
     }
 
     /**

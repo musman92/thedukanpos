@@ -23,7 +23,12 @@ export function resolveCartDiscount(subtotal, tax, discountValue = 0, discountMo
 /**
  * @param {'fixed'|'percent'} [discountMode]
  */
-export function cartTotals(cart, discountValue = 0, discountMode = 'fixed') {
+export function cartTotals(
+    cart,
+    discountValue = 0,
+    discountMode = 'fixed',
+    deliveryCharge = 0,
+) {
     let subtotal = 0;
     let tax = 0;
     const rates = new Set();
@@ -43,7 +48,8 @@ export function cartTotals(cart, discountValue = 0, discountMode = 'fixed') {
     }
 
     const discount = resolveCartDiscount(subtotal, tax, discountValue, discountMode);
-    const total = Math.max(0, subtotal + tax - discount);
+    const delivery = Math.max(0, Number(deliveryCharge || 0));
+    const total = Math.max(0, subtotal + tax - discount + delivery);
 
     let taxRateLabel = null;
     if (rates.size === 1) {
@@ -54,6 +60,7 @@ export function cartTotals(cart, discountValue = 0, discountMode = 'fixed') {
         subtotal,
         tax,
         discount,
+        delivery,
         total,
         taxRateLabel,
     };

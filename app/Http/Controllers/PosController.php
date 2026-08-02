@@ -9,6 +9,7 @@ use App\Models\MoneySource;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\Shift;
+use App\Models\User;
 use App\Services\SaleService;
 use App\Services\SettingService;
 use App\Support\BranchContext;
@@ -38,6 +39,7 @@ class PosController extends Controller
             'categories' => $this->posCategories(),
             'pos_settings' => [
                 'allow_credit' => (bool) $config['pos_allow_credit'],
+                'enable_delivery' => (bool) ($config['pos_enable_delivery'] ?? false),
                 'show_stock' => (bool) $config['pos_show_stock'],
                 'show_product_image' => (bool) $config['pos_show_product_image'],
                 'catalog_mode' => $config['pos_catalog_mode'] ?? 'flat',
@@ -52,22 +54,55 @@ class PosController extends Controller
                 ->get(['id', 'name', 'type']),
             'customers' => Customer::query()
                 ->where('is_active', true)
-                ->orderByRaw("CASE WHEN UPPER(code) = ? THEN 0 ELSE 1 END", [Customer::CODE_WALK_IN])
+                ->orderByRaw('CASE WHEN UPPER(code) = ? THEN 0 ELSE 1 END', [Customer::CODE_WALK_IN])
                 ->orderBy('name')
-                ->get(['id', 'name', 'code', 'phone', 'balance', 'is_system'])
-                ->map(fn (Customer $customer) => [
-                    'id' => $customer->id,
-                    'name' => $customer->name,
-                    'code' => $customer->code,
-                    'phone' => $customer->phone,
-                    'balance' => $customer->balance,
-                    'is_system' => (bool) $customer->is_system,
-                    'is_walk_in' => $customer->isWalkIn(),
-                ])
+                ->get(['id', 'name', 'code', 'phone', 'address', 'balance', 'is_system'])
+                ->map(fn (Customer $customer) => $this->mapCustomerForPos($customer))
                 ->values()
                 ->all(),
             'default_customer_id' => Customer::walkIn()?->id,
+            'riders' => User::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->orderBy('username')
+                ->get(['id', 'name', 'username'])
+                ->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name ?: $user->username,
+                ])
+                ->values()
+                ->all(),
         ]);
+    }
+
+    public function storeCustomer(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['required', 'string', 'max:2000'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        try {
+            $customer = app(\App\Services\CustomerService::class)->create([
+                'name' => $data['name'],
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'] ?? null,
+                'address' => $data['address'],
+                'opening_balance' => 0,
+                'is_active' => true,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?? 'Could not create customer.';
+
+            return response()->json(['message' => $message, 'errors' => $e->errors()], 422);
+        }
+
+        return response()->json([
+            'customer' => $this->mapCustomerForPos($customer),
+            'message' => 'Customer created.',
+        ], 201);
     }
 
     public function catalog(Request $request): JsonResponse
@@ -152,6 +187,10 @@ class PosController extends Controller
             'discount_total' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'foc' => ['sometimes', 'boolean'],
+            'is_delivery' => ['sometimes', 'boolean'],
+            'delivery_charge' => ['nullable', 'numeric', 'min:0'],
+            'delivery_address' => ['nullable', 'string', 'max:2000'],
+            'rider_id' => ['nullable', 'integer', 'exists:users,id'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.variant_id' => ['required', 'exists:product_variants,id'],
             'items.*.unit_id' => ['nullable', 'exists:units,id'],
@@ -164,12 +203,13 @@ class PosController extends Controller
         ]);
 
         $isFoc = (bool) ($data['foc'] ?? false);
+        $isDelivery = ! $isFoc && (bool) ($data['is_delivery'] ?? false);
         $payments = collect($data['payments'] ?? [])->filter(fn ($p) => (float) $p['amount'] > 0)->values()->all();
         $paidSum = collect($payments)->sum(fn ($p) => (float) $p['amount']);
 
         $walkIn = Customer::walkIn();
         $customerId = isset($data['customer_id']) ? (int) $data['customer_id'] : null;
-        if (! $customerId && $walkIn) {
+        if (! $customerId && $walkIn && ! $isDelivery) {
             $customerId = (int) $walkIn->id;
         }
         $isWalkInCustomer = $walkIn && $customerId === (int) $walkIn->id;
@@ -196,6 +236,10 @@ class PosController extends Controller
                 'customer_id' => $customerId,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $isFoc ? trim(($data['notes'] ?? '').' FOC') : ($data['notes'] ?? null),
+                'is_delivery' => $isDelivery,
+                'delivery_charge' => $isDelivery ? ($data['delivery_charge'] ?? 0) : 0,
+                'delivery_address' => $isDelivery ? ($data['delivery_address'] ?? null) : null,
+                'rider_id' => $isDelivery ? ($data['rider_id'] ?? null) : null,
                 'items' => $data['items'],
                 'payments' => $payments,
                 'allow_credit' => $isFoc ? true : $this->settings->allowPosCredit(),
@@ -271,6 +315,65 @@ class PosController extends Controller
         ]);
     }
 
+    public function deliveries(Request $request, SaleService $sales): JsonResponse
+    {
+        if (! $this->settings->allowPosDelivery()) {
+            return response()->json(['message' => 'Delivery is disabled in company settings.'], 422);
+        }
+
+        $branch = BranchContext::ensure();
+        $status = $request->query('status');
+
+        return response()->json([
+            'data' => $sales->listDeliveries(
+                $branch->id,
+                is_string($status) && $status !== '' ? $status : null,
+            ),
+        ]);
+    }
+
+    public function updateDelivery(Request $request, Sale $sale, SaleService $sales): JsonResponse
+    {
+        if (! $this->settings->allowPosDelivery()) {
+            return response()->json(['message' => 'Delivery is disabled in company settings.'], 422);
+        }
+
+        $branch = BranchContext::ensure();
+
+        if ((int) $sale->branch_id !== (int) $branch->id || ! $sale->is_delivery || $sale->isParked()) {
+            return response()->json(['message' => 'Delivery order not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'delivery_status' => ['nullable', 'string', 'in:'.implode(',', Sale::deliveryStatuses())],
+            'rider_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        try {
+            $updated = $sales->updateDelivery($sale, $data);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'sale' => [
+                ...$sales->serializeList($updated),
+                'item_count' => $updated->items()->count(),
+                'status' => $updated->status,
+                'delivery_charge' => round((float) ($updated->delivery_charge ?? 0), 2),
+                'delivery_address' => $updated->delivery_address,
+                'customer' => $updated->customer
+                    ? [
+                        'id' => $updated->customer->id,
+                        'name' => $updated->customer->name,
+                        'phone' => $updated->customer->phone,
+                    ]
+                    : null,
+            ],
+            'message' => "Delivery {$updated->number} updated.",
+        ]);
+    }
+
     public function park(ParkSaleRequest $request, SaleService $sales): JsonResponse
     {
         $branch = BranchContext::ensure();
@@ -289,6 +392,10 @@ class PosController extends Controller
                 'customer_id' => $data['customer_id'] ?? null,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $data['notes'] ?? null,
+                'is_delivery' => (bool) ($data['is_delivery'] ?? false),
+                'delivery_charge' => $data['delivery_charge'] ?? 0,
+                'delivery_address' => $data['delivery_address'] ?? null,
+                'rider_id' => $data['rider_id'] ?? null,
                 'items' => $data['items'],
             ]);
         } catch (\Throwable $e) {
@@ -316,6 +423,10 @@ class PosController extends Controller
                 'customer_id' => $data['customer_id'] ?? null,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $data['notes'] ?? null,
+                'is_delivery' => (bool) ($data['is_delivery'] ?? false),
+                'delivery_charge' => $data['delivery_charge'] ?? 0,
+                'delivery_address' => $data['delivery_address'] ?? null,
+                'rider_id' => $data['rider_id'] ?? null,
                 'items' => $data['items'],
             ]);
         } catch (\Throwable $e) {
@@ -351,7 +462,7 @@ class PosController extends Controller
             abort(404);
         }
 
-        $sale->load(['items.product', 'items.variant', 'payments.moneySource', 'branch', 'cashier', 'customer']);
+        $sale->load(['items.product', 'items.variant', 'payments.moneySource', 'branch', 'cashier', 'customer', 'rider']);
 
         $branding = $this->settings->receiptBranding($sale->branch?->name);
 
@@ -363,10 +474,25 @@ class PosController extends Controller
                 'subtotal' => (float) $sale->subtotal,
                 'tax_total' => (float) $sale->tax_total,
                 'discount_total' => (float) $sale->discount_total,
+                'is_delivery' => (bool) $sale->is_delivery,
+                'delivery_charge' => (float) ($sale->delivery_charge ?? 0),
+                'delivery_address' => $sale->delivery_address,
+                'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
+                'rider' => $sale->rider
+                    ? [
+                        'id' => $sale->rider->id,
+                        'name' => $sale->rider->name ?: $sale->rider->username,
+                    ]
+                    : null,
                 'total' => (float) $sale->total,
                 'paid_total' => (float) $sale->paid_total,
                 'customer' => $sale->customer
-                    ? ['id' => $sale->customer->id, 'name' => $sale->customer->name]
+                    ? [
+                        'id' => $sale->customer->id,
+                        'name' => $sale->customer->name,
+                        'phone' => $sale->customer->phone,
+                        'address' => $sale->customer->address,
+                    ]
                     : null,
                 'cashier' => $sale->cashier
                     ? ['id' => $sale->cashier->id, 'name' => $sale->cashier->name ?: $sale->cashier->username]
@@ -522,5 +648,23 @@ class PosController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function mapCustomerForPos(Customer $customer): array
+    {
+        return [
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'code' => $customer->code,
+            'phone' => $customer->phone,
+            'address' => $customer->address,
+            'balance' => $customer->balance,
+            'is_system' => (bool) $customer->is_system,
+            'is_walk_in' => $customer->isWalkIn(),
+            'has_address' => trim((string) ($customer->address ?? '')) !== '',
+        ];
     }
 }

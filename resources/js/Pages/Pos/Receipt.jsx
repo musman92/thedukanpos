@@ -149,10 +149,31 @@ export default function Receipt({ sale, tenant, branding }) {
                             <span>{money(sale.tax_total)}</span>
                         </div>
                     )}
+                    {sale.is_delivery && Number(sale.delivery_charge || 0) > 0 && (
+                        <div className="flex justify-between">
+                            <span>Delivery</span>
+                            <span>{money(sale.delivery_charge)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between border-y border-stone-900 py-1 font-semibold">
                         <span>Total</span>
                         <span>{money(sale.total)}</span>
                     </div>
+                    {sale.is_delivery && (sale.delivery_address || sale.rider?.name) && (
+                        <div className="pt-2 text-xs text-stone-500">
+                            {sale.delivery_address && (
+                                <>
+                                    <p className="font-semibold text-stone-700">Deliver to</p>
+                                    <p className="mt-0.5 whitespace-pre-line">
+                                        {sale.delivery_address}
+                                    </p>
+                                </>
+                            )}
+                            {sale.rider?.name && (
+                                <p className="mt-1">Rider: {sale.rider.name}</p>
+                            )}
+                        </div>
+                    )}
                     {sectionOn(sections, 'payment_info') && (
                         <>
                             <div className="flex justify-between">

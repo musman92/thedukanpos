@@ -72,6 +72,7 @@ export default function PaymentModal({
     );
 
     const payable = Number(totals.total || 0);
+    const deliveryAmount = Number(totals.delivery || 0);
     const paidSum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
     const remaining = Math.max(0, payable - paidSum);
     const change = Math.max(0, paidSum - payable);
@@ -486,6 +487,14 @@ export default function PaymentModal({
                     )}
 
                     <div className="mt-auto space-y-1.5 border-t border-theme-border pt-4 text-sm">
+                        {deliveryAmount > 0 && (
+                            <div className="flex justify-between text-theme-ink-soft">
+                                <span>Delivery</span>
+                                <span className="tabular-nums text-theme-ink">
+                                    {formatMoney(deliveryAmount, moneyCfg)}
+                                </span>
+                            </div>
+                        )}
                         <div className="flex justify-between text-theme-ink-soft">
                             <span>Payable</span>
                             <span className="tabular-nums text-theme-ink">

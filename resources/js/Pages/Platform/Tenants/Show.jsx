@@ -2,8 +2,8 @@ import PlatformLayout from '@/Layouts/PlatformLayout';
 import Button from '@/Components/Ui/Button';
 import TenantFormDrawer from '@/Pages/Platform/Tenants/TenantFormDrawer';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Database, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Database, Pencil, Puzzle } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 function Info({ label, children }) {
     return (
@@ -33,14 +33,27 @@ function seedTone(status) {
     return 'border-theme-border bg-theme-bg text-theme-ink-soft';
 }
 
+const TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'addons', label: 'Addons' },
+];
+
 export default function Show({
     tenant,
     form_meta: formMeta = {},
     demo_seed: demoSeed = {},
+    addons = [],
 }) {
     const [editing, setEditing] = useState(false);
-    const { errors } = usePage().props;
+    const [tab, setTab] = useState('overview');
+    const [busySlug, setBusySlug] = useState(null);
+    const { errors, flash } = usePage().props;
     const seedBusy = ['queued', 'running'].includes(demoSeed?.status);
+
+    const installedCount = useMemo(
+        () => addons.filter((a) => a.installed).length,
+        [addons],
+    );
 
     const startSeed = () => {
         if (
@@ -51,6 +64,43 @@ export default function Show({
             return;
         }
         router.post(route('platform.tenants.seed-demo', tenant.id), {}, { preserveScroll: true });
+    };
+
+    const installAddon = (addon) => {
+        if (
+            !window.confirm(
+                `Install “${addon.name}” for ${tenant.name}? The company admin cannot install addons themselves.`,
+            )
+        ) {
+            return;
+        }
+        setBusySlug(addon.slug);
+        router.post(
+            route('platform.tenants.addons.install', { tenant: tenant.id, addon: addon.slug }),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setBusySlug(null),
+            },
+        );
+    };
+
+    const removeAddon = (addon) => {
+        if (
+            !window.confirm(
+                `Remove “${addon.name}” from ${tenant.name}? Addon data may be wiped when uninstall hooks are fully wired.`,
+            )
+        ) {
+            return;
+        }
+        setBusySlug(addon.slug);
+        router.delete(
+            route('platform.tenants.addons.remove', { tenant: tenant.id, addon: addon.slug }),
+            {
+                preserveScroll: true,
+                onFinish: () => setBusySlug(null),
+            },
+        );
     };
 
     return (
@@ -96,13 +146,19 @@ export default function Show({
         >
             <Head title={`Platform · ${tenant.name}`} />
 
-            {errors?.tenant && (
+            {(errors?.tenant || errors?.addon || flash?.error) && (
                 <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                    {errors.tenant}
+                    {errors?.tenant || errors?.addon || flash?.error}
                 </div>
             )}
 
-            {tenant.is_demo && demoSeed?.status && (
+            {flash?.status && (
+                <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    {flash.status}
+                </div>
+            )}
+
+            {tenant.is_demo && demoSeed?.status && tab === 'overview' && (
                 <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${seedTone(demoSeed.status)}`}>
                     <div className="font-semibold">
                         Demo seed: {String(demoSeed.status).replace('_', ' ')}
@@ -142,54 +198,167 @@ export default function Show({
                 </div>
             )}
 
-            <div className="dp-card overflow-hidden">
-                <div className="border-b border-theme-border px-4 py-3">
-                    <h2 className="text-base font-semibold text-theme-ink">Company information</h2>
-                </div>
-                <dl className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
-                    <Info label="Company name">
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                            {tenant.name}
-                            {tenant.is_demo && (
-                                <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                                    Demo
-                                </span>
-                            )}
-                        </span>
-                    </Info>
-                    <Info label="Slug / code">
-                        <span className="font-mono text-xs">{tenant.code}</span>
-                    </Info>
-                    <Info label="Email">{tenant.email}</Info>
-                    <Info label="Phone">{tenant.phone}</Info>
-                    <Info label="Address">{tenant.address}</Info>
-                    <Info label="Tax ID">{tenant.tax_id}</Info>
-                    <Info label="Currency">{tenant.currency}</Info>
-                    <Info label="Timezone">{tenant.timezone}</Info>
-                    <Info label="Status">
-                        <StatusBadge active={!!tenant.is_active} />
-                    </Info>
-                    <Info label="Created">{tenant.created_at}</Info>
-                </dl>
+            <div className="mb-4 flex flex-wrap gap-1 border-b border-theme-border">
+                {TABS.map((item) => (
+                    <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setTab(item.id)}
+                        className={
+                            tab === item.id
+                                ? 'border-b-2 border-theme-primary px-3 py-2 text-sm font-semibold text-theme-primary'
+                                : 'px-3 py-2 text-sm font-medium text-theme-ink-muted hover:text-theme-ink'
+                        }
+                    >
+                        {item.label}
+                        {item.id === 'addons' && (
+                            <span className="ms-1.5 text-xs font-normal text-theme-ink-muted">
+                                ({installedCount}/{addons.length})
+                            </span>
+                        )}
+                    </button>
+                ))}
             </div>
 
-            <div className="dp-card mt-4 overflow-hidden">
-                <div className="border-b border-theme-border px-4 py-3">
-                    <h2 className="text-base font-semibold text-theme-ink">Subscription & billing</h2>
+            {tab === 'overview' && (
+                <>
+                    <div className="dp-card overflow-hidden">
+                        <div className="border-b border-theme-border px-4 py-3">
+                            <h2 className="text-base font-semibold text-theme-ink">
+                                Company information
+                            </h2>
+                        </div>
+                        <dl className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
+                            <Info label="Company name">
+                                <span className="inline-flex flex-wrap items-center gap-2">
+                                    {tenant.name}
+                                    {tenant.is_demo && (
+                                        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                                            Demo
+                                        </span>
+                                    )}
+                                </span>
+                            </Info>
+                            <Info label="Slug / code">
+                                <span className="font-mono text-xs">{tenant.code}</span>
+                            </Info>
+                            <Info label="Email">{tenant.email}</Info>
+                            <Info label="Phone">{tenant.phone}</Info>
+                            <Info label="Address">{tenant.address}</Info>
+                            <Info label="Tax ID">{tenant.tax_id}</Info>
+                            <Info label="Currency">{tenant.currency}</Info>
+                            <Info label="Timezone">{tenant.timezone}</Info>
+                            <Info label="Status">
+                                <StatusBadge active={!!tenant.is_active} />
+                            </Info>
+                            <Info label="Created">{tenant.created_at}</Info>
+                        </dl>
+                    </div>
+
+                    <div className="dp-card mt-4 overflow-hidden">
+                        <div className="border-b border-theme-border px-4 py-3">
+                            <h2 className="text-base font-semibold text-theme-ink">
+                                Subscription & billing
+                            </h2>
+                        </div>
+                        <dl className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
+                            <Info label="Plan">{tenant.plan}</Info>
+                            <Info label="Billing status">{tenant.billing_status}</Info>
+                            <Info label="Monthly fee">
+                                {Number(tenant.monthly_fee || 0).toFixed(2)}
+                            </Info>
+                            <Info label="Trial ends">{tenant.trial_ends_at}</Info>
+                            <Info label="Billing notes">{tenant.billing_notes}</Info>
+                            <Info label="Login hint">
+                                <span className="font-mono text-xs">admin@{tenant.code}</span>
+                            </Info>
+                        </dl>
+                    </div>
+                </>
+            )}
+
+            {tab === 'addons' && (
+                <div className="dp-card overflow-hidden">
+                    <div className="border-b border-theme-border px-4 py-3">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-theme-primary">
+                                <Puzzle className="h-4 w-4" strokeWidth={2.25} />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-semibold text-theme-ink">Addons</h2>
+                                <p className="mt-0.5 text-sm text-theme-ink-muted">
+                                    Only platform admins can install or remove addons for a company.
+                                    Tenant users cannot manage this list.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {addons.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-sm text-theme-ink-muted">
+                            No addons found under <code className="text-xs">addons/</code>.
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-theme-border">
+                            {addons.map((addon) => {
+                                const busy = busySlug === addon.slug;
+                                return (
+                                    <li
+                                        key={addon.slug}
+                                        className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="text-sm font-semibold text-theme-ink">
+                                                    {addon.name}
+                                                </h3>
+                                                <span className="font-mono text-[11px] text-theme-ink-muted">
+                                                    v{addon.version}
+                                                </span>
+                                                {addon.installed ? (
+                                                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                                        Installed
+                                                    </span>
+                                                ) : (
+                                                    <span className="rounded-full bg-theme-bg px-2 py-0.5 text-[11px] font-semibold text-theme-ink-soft ring-1 ring-theme-border">
+                                                        Not installed
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="mt-1 text-sm text-theme-ink-muted">
+                                                {addon.description || 'No description.'}
+                                            </p>
+                                            {addon.installed_at && (
+                                                <p className="mt-1 text-xs text-theme-ink-muted">
+                                                    Installed {addon.installed_at}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {addon.installed ? (
+                                                <Button
+                                                    variant="secondary"
+                                                    disabled={busy || !tenant.is_active}
+                                                    onClick={() => removeAddon(addon)}
+                                                >
+                                                    {busy ? 'Removing…' : 'Remove'}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    disabled={busy || !tenant.is_active}
+                                                    onClick={() => installAddon(addon)}
+                                                >
+                                                    {busy ? 'Installing…' : 'Install'}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </div>
-                <dl className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
-                    <Info label="Plan">{tenant.plan}</Info>
-                    <Info label="Billing status">{tenant.billing_status}</Info>
-                    <Info label="Monthly fee">
-                        {Number(tenant.monthly_fee || 0).toFixed(2)}
-                    </Info>
-                    <Info label="Trial ends">{tenant.trial_ends_at}</Info>
-                    <Info label="Billing notes">{tenant.billing_notes}</Info>
-                    <Info label="Login hint">
-                        <span className="font-mono text-xs">admin@{tenant.code}</span>
-                    </Info>
-                </dl>
-            </div>
+            )}
 
             <TenantFormDrawer
                 open={editing}

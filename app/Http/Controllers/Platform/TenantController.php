@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SeedTenantAdmin;
 use App\Models\SupportLoginToken;
 use App\Models\Tenant;
+use App\Services\AddonProvisionService;
 use App\Services\DemoSeedService;
 use App\Services\SettingService;
 use App\Support\PageLimit;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -81,11 +83,38 @@ class TenantController extends Controller
         return Inertia::render('Platform/Tenants/Show', [
             'tenant' => $this->tenantPayload($tenant),
             'demo_seed' => app(DemoSeedService::class)->status($tenant),
+            'addons' => app(AddonProvisionService::class)->statusForTenant($tenant),
             'form_meta' => $this->formMeta(),
             'auth' => [
                 'user' => Auth::guard('platform')->user()?->only(['id', 'name', 'email']),
             ],
         ]);
+    }
+
+    public function installAddon(Request $request, Tenant $tenant, string $addon): RedirectResponse
+    {
+        try {
+            app(AddonProvisionService::class)->install($tenant, $addon);
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?? 'Cannot install addon.';
+
+            return back()->with('error', $message);
+        }
+
+        return back()->with('status', 'Addon installed for this company.');
+    }
+
+    public function removeAddon(Request $request, Tenant $tenant, string $addon): RedirectResponse
+    {
+        try {
+            app(AddonProvisionService::class)->remove($tenant, $addon);
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?? 'Cannot remove addon.';
+
+            return back()->with('error', $message);
+        }
+
+        return back()->with('status', 'Addon removed from this company.');
     }
 
     public function store(Request $request): RedirectResponse

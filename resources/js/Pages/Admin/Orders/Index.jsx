@@ -246,7 +246,14 @@ export default function Index({ sales, filters, customers = [], branch }) {
                                         {row.created_at}
                                     </td>
                                     <td className="px-3 py-3 font-mono text-xs text-theme-ink">
-                                        {row.number}
+                                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                                            {row.number}
+                                            {row.is_delivery && (
+                                                <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                                    Delivery
+                                                </span>
+                                            )}
+                                        </span>
                                     </td>
                                     <td className="px-3 py-3 text-theme-ink">
                                         {row.customer?.name || '—'}

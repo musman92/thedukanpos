@@ -138,6 +138,7 @@ function dataFromSettings(settings) {
         list_page_limit: String(settings.list_page_limit ?? 15),
         activity_logging_enabled: !!settings.activity_logging_enabled,
         pos_allow_credit: !!settings.pos_allow_credit,
+        pos_enable_delivery: !!settings.pos_enable_delivery,
         pos_show_stock: !!settings.pos_show_stock,
         pos_show_product_image: settings.pos_show_product_image !== false,
         pos_catalog_mode: settings.pos_catalog_mode === 'grouped' ? 'grouped' : 'flat',
@@ -164,6 +165,7 @@ const RELOAD_ON_CHANGE_KEYS = [
     'week_starts_on',
     'list_page_limit',
     'pos_allow_credit',
+    'pos_enable_delivery',
     'pos_show_stock',
     'pos_show_product_image',
     'pos_catalog_mode',
@@ -583,17 +585,32 @@ export default function Edit({ settings, section = 'general', options = {} }) {
 
                 {active === 'pos' && (
                     <div className="space-y-4">
-                        <label className="flex items-center gap-2 text-sm text-theme-ink">
-                            <input
-                                type="checkbox"
-                                checked={form.data.pos_allow_credit}
-                                onChange={(e) =>
-                                    form.setData('pos_allow_credit', e.target.checked)
-                                }
-                                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
-                            />
-                            Allow credit / partial sales
-                        </label>
+                            <label className="flex items-center gap-2 text-sm text-theme-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.pos_allow_credit}
+                                    onChange={(e) =>
+                                        form.setData('pos_allow_credit', e.target.checked)
+                                    }
+                                    className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+                                />
+                                Allow credit / partial sales
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-theme-ink">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.pos_enable_delivery}
+                                    onChange={(e) =>
+                                        form.setData('pos_enable_delivery', e.target.checked)
+                                    }
+                                    className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+                                />
+                                Enable delivery on POS
+                            </label>
+                            <p className="-mt-2 text-xs text-theme-ink-muted">
+                                When on, cashiers can mark an order as delivery, set a charge, and
+                                must use a customer with an address (quick-create available on POS).
+                            </p>
                         <label className="flex items-center gap-2 text-sm text-theme-ink">
                             <input
                                 type="checkbox"

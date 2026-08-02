@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * Example tenant migration for this addon.
+ * Rename the file (timestamp_*.php) and remove ".example" when ready.
+ *
+ * Run only via the Addon Manager install path for this addon — not as a core tenant migration.
+ */
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('your_addon_items', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('your_addon_items');
+    }
+};

@@ -5,15 +5,26 @@ import { confirmAction } from '@/lib/confirm';
 import axios from 'axios';
 import {
     Ban,
+    Bike,
     History,
     List,
     Loader2,
+    MapPin,
     Receipt,
     ShoppingBag,
+    Truck,
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
+
+const DELIVERY_STATUS_LABELS = {
+    pending: 'Pending',
+    assigned: 'Assigned',
+    out_for_delivery: 'Out for delivery',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+};
 
 function statusBadge(sale) {
     if (sale.status === 'void') {
@@ -105,6 +116,41 @@ function OrderDetailsModal({ open, onClose, sale, loading, moneyCfg, onViewRecei
                         </div>
                     </div>
 
+                    {sale.is_delivery && (
+                        <div className="space-y-2 border-b border-theme-border bg-[var(--color-primary-soft)]/40 px-5 py-4 text-sm">
+                            <div className="flex items-center gap-2 font-semibold text-theme-ink">
+                                <Truck className="h-4 w-4 text-theme-primary" />
+                                Delivery
+                                <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                    {DELIVERY_STATUS_LABELS[sale.delivery_status] ||
+                                        sale.delivery_status ||
+                                        'Pending'}
+                                </span>
+                            </div>
+                            {sale.delivery_address && (
+                                <p className="flex items-start gap-1.5 text-theme-ink-soft">
+                                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>{sale.delivery_address}</span>
+                                </p>
+                            )}
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <div>
+                                    <p className="text-xs text-theme-ink-muted">Rider</p>
+                                    <p className="flex items-center gap-1.5 font-medium text-theme-ink">
+                                        <Bike className="h-3.5 w-3.5 text-theme-ink-muted" />
+                                        {sale.rider?.name || 'Unassigned'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-theme-ink-muted">Delivery charge</p>
+                                    <p className="font-medium tabular-nums text-theme-ink">
+                                        {formatMoney(sale.delivery_charge || 0, moneyCfg)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="max-h-[40vh] overflow-auto px-5 py-3">
                         <table className="w-full text-left text-sm">
                             <thead>
@@ -167,6 +213,14 @@ function OrderDetailsModal({ open, onClose, sale, loading, moneyCfg, onViewRecei
                                 {formatMoney(sale.tax_total, moneyCfg)}
                             </span>
                         </div>
+                        {sale.is_delivery && Number(sale.delivery_charge || 0) > 0 && (
+                            <div className="flex justify-between gap-3 text-theme-ink-soft">
+                                <span>Delivery</span>
+                                <span className="tabular-nums">
+                                    {formatMoney(sale.delivery_charge, moneyCfg)}
+                                </span>
+                            </div>
+                        )}
 
                         {payments.length > 0 ? (
                             payments.map((p) => (
@@ -377,11 +431,18 @@ export default function TodayHistoryDrawer({
                                             <p className="min-w-0 truncate text-sm font-semibold text-theme-ink">
                                                 {sale.number}
                                             </p>
-                                            <span
-                                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}
-                                            >
-                                                {badge.label}
-                                            </span>
+                                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                                                {sale.is_delivery && (
+                                                    <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                                        Delivery
+                                                    </span>
+                                                )}
+                                                <span
+                                                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}
+                                                >
+                                                    {badge.label}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <div className="mt-2 flex items-center gap-1.5 text-xs text-theme-ink-muted">
@@ -390,6 +451,16 @@ export default function TodayHistoryDrawer({
                                                 {sale.customer?.name || 'Walk-in'}
                                             </span>
                                         </div>
+                                        {sale.is_delivery && sale.delivery_status && (
+                                            <p className="mt-1 flex items-center gap-1 text-[11px] text-sky-700">
+                                                <Truck className="h-3 w-3" />
+                                                {DELIVERY_STATUS_LABELS[sale.delivery_status] ||
+                                                    sale.delivery_status}
+                                                {sale.rider?.name
+                                                    ? ` · ${sale.rider.name}`
+                                                    : ''}
+                                            </p>
+                                        )}
 
                                         <p className="mt-3 text-xl font-bold tabular-nums text-theme-primary">
                                             {formatMoney(sale.total, moneyCfg)}

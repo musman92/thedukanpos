@@ -246,12 +246,19 @@ export default function OrderHistory({
                         {rows.map((s) => (
                             <tr key={s.id} className="border-t border-theme-border/80">
                                 <td className="px-4 py-2.5">
-                                    <Link
-                                        href={route('admin.orders.show', s.id)}
-                                        className="font-mono text-xs font-semibold text-theme-primary hover:underline"
-                                    >
-                                        {s.number}
-                                    </Link>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <Link
+                                            href={route('admin.orders.show', s.id)}
+                                            className="font-mono text-xs font-semibold text-theme-primary hover:underline"
+                                        >
+                                            {s.number}
+                                        </Link>
+                                        {s.is_delivery && (
+                                            <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                                                Delivery
+                                            </span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-theme-ink-soft">{s.created_at}</td>
                                 <td className="px-4 py-2.5 text-theme-ink">{s.customer}</td>

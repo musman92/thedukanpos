@@ -1,0 +1,20 @@
+{
+  "slug": "installments",
+  "name": "Installments",
+  "version": "0.1.0",
+  "description": "Sell on installment plans and collect scheduled payments. Features TBD.",
+  "requires_core": ">=1.0.0",
+  "provider": "Addons\\Installments\\Providers\\InstallmentsServiceProvider",
+  "permissions": [
+    "installments.view",
+    "installments.manage"
+  ],
+  "nav": [
+    {
+      "label": "Installments",
+      "route": "admin.installments.index",
+      "group": "sales",
+      "permission": "installments.view"
+    }
+  ]
+}
