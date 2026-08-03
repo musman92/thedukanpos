@@ -4,8 +4,14 @@ import ParkedBillsDrawer from '@/Components/Pos/ParkedBillsDrawer';
 import QuickCustomerModal from '@/Components/Pos/QuickCustomerModal';
 import TodayHistoryDrawer from '@/Components/Pos/TodayHistoryDrawer';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import { confirmAction } from '@/lib/confirm';
 import { formatMoney } from '@/lib/money';
 import { cartTotals, pickExactProduct } from '@/lib/posCart';
+import {
+    isConfirmDialogOpen,
+    isEditableTarget,
+    POS_HOTKEYS,
+} from '@/lib/posHotkeys';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import {
@@ -14,6 +20,7 @@ import {
     Bookmark,
     Clock3,
     History,
+    Keyboard,
     LayoutDashboard,
     LayoutGrid,
     Minus,
@@ -26,6 +33,15 @@ import {
     UserPlus,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Swal from 'sweetalert2';
+
+function KeyHint({ children }) {
+    return (
+        <kbd className="hidden rounded border border-theme-border/80 bg-theme-surface px-1 py-px font-mono text-[9px] font-semibold leading-none text-theme-ink-muted sm:inline">
+            {children}
+        </kbd>
+    );
+}
 
 function goAdmin(path = '/admin') {
     window.location.assign(path);
@@ -89,6 +105,18 @@ function ProductCard({ product, index = 0, showStock, showImage, moneyCfg, onSel
 }
 
 function VariantPicker({ product, showStock, moneyCfg, onPick, onClose }) {
+    useEffect(() => {
+        if (!product) return undefined;
+        const onKey = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [product, onClose]);
+
     if (!product) return null;
 
     return (
@@ -413,7 +441,7 @@ export default function Index({
         });
     };
 
-    const clearCart = () => {
+    const resetCartState = useCallback(() => {
         setCart([]);
         setDiscountValue('');
         setDiscountMode('fixed');
@@ -425,7 +453,38 @@ export default function Index({
         setParkedSaleId(null);
         setMessage('');
         searchRef.current?.focus();
-    };
+    }, [walkInCustomerId]);
+
+    const clearCart = useCallback(async () => {
+        if (!cart.length) return;
+        const ok = await confirmAction({
+            title: 'Clear this order?',
+            text: 'All items in the cart will be removed.',
+            confirmText: 'Yes, clear',
+            cancelText: 'Keep items',
+            icon: 'warning',
+        });
+        if (!ok) return;
+        resetCartState();
+    }, [cart.length, resetCartState]);
+
+    const focusSearch = useCallback(() => {
+        searchRef.current?.focus();
+        searchRef.current?.select?.();
+    }, []);
+
+    const showHotkeyHelp = useCallback(async () => {
+        const rows = POS_HOTKEYS.map(
+            (row) =>
+                `<tr><td class="py-1 pr-4 font-mono text-xs font-semibold">${row.keys}</td><td class="py-1 text-sm">${row.action}</td></tr>`,
+        ).join('');
+        await Swal.fire({
+            title: 'POS shortcuts',
+            html: `<table class="w-full text-left">${rows}</table>`,
+            confirmButtonText: 'Got it',
+            confirmButtonColor: 'var(--color-primary, #0f766e)',
+        });
+    }, []);
 
     const selectCustomer = (id) => {
         const nextId = id === '' || id == null ? walkInCustomerId : String(id);
@@ -514,7 +573,7 @@ export default function Index({
                 const without = prev.filter((b) => b.id !== saved.id);
                 return [saved, ...without];
             });
-            clearCart();
+            resetCartState();
             setMessage(data.message || 'Bill saved for later.');
         } catch (err) {
             setMessage(err.response?.data?.message || 'Could not save bill.');
@@ -570,10 +629,10 @@ export default function Index({
         }
     }, []);
 
-    const openTodayHistory = () => {
+    const openTodayHistory = useCallback(() => {
         setTodayOpen(true);
         loadTodaySales();
-    };
+    }, [loadTodaySales]);
 
     const discardParked = async (bill) => {
         setDiscardBusyId(bill.id);
@@ -581,7 +640,7 @@ export default function Index({
             await axios.delete(route('pos.parked.discard', bill.id));
             setParkedBills((prev) => prev.filter((b) => b.id !== bill.id));
             if (parkedSaleId === bill.id) {
-                clearCart();
+                resetCartState();
             }
         } catch (err) {
             setMessage(err.response?.data?.message || 'Could not discard bill.');
@@ -590,7 +649,7 @@ export default function Index({
         }
     };
 
-    const openPay = () => {
+    const openPay = useCallback(() => {
         if (!shift) {
             setMessage('Open a shift in Admin → Shifts before selling.');
             return;
@@ -609,7 +668,113 @@ export default function Index({
         }
         setMessage('');
         setPayOpen(true);
-    };
+    }, [
+        shift,
+        cart.length,
+        isDelivery,
+        selectedCustomer,
+        deliveryAddress,
+    ]);
+
+    const saveForLaterRef = useRef(saveForLater);
+    saveForLaterRef.current = saveForLater;
+    const openPayRef = useRef(openPay);
+    openPayRef.current = openPay;
+    const openTodayHistoryRef = useRef(openTodayHistory);
+    openTodayHistoryRef.current = openTodayHistory;
+    const clearCartRef = useRef(clearCart);
+    clearCartRef.current = clearCart;
+
+    const overlayOpen =
+        payOpen ||
+        todayOpen ||
+        parkedOpen ||
+        deliveryOpen ||
+        quickCustomerOpen ||
+        !!variantPicker;
+
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+            if (isConfirmDialogOpen()) return;
+
+            const typing = isEditableTarget(e.target);
+
+            if (e.key === 'Escape') {
+                if (variantPicker) {
+                    e.preventDefault();
+                    setVariantPicker(null);
+                }
+                return;
+            }
+
+            if (e.key === '?' && !typing) {
+                e.preventDefault();
+                showHotkeyHelp();
+                return;
+            }
+
+            if ((e.key === '/' || e.code === 'Slash') && !typing && !overlayOpen) {
+                e.preventDefault();
+                focusSearch();
+                return;
+            }
+
+            // Function keys work even while search/input is focused.
+            if (!e.key.startsWith('F')) return;
+
+            if (overlayOpen) return;
+
+            if (e.key === 'F2') {
+                e.preventDefault();
+                focusSearch();
+                return;
+            }
+            if (e.key === 'F3') {
+                e.preventDefault();
+                if (!cart.length || busy) return;
+                saveForLaterRef.current();
+                return;
+            }
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if (!cart.length || busy) return;
+                openPayRef.current();
+                return;
+            }
+            if (e.key === 'F6') {
+                e.preventDefault();
+                setParkedOpen(true);
+                return;
+            }
+            if (e.key === 'F7') {
+                e.preventDefault();
+                openTodayHistoryRef.current();
+                return;
+            }
+            if (e.key === 'F8') {
+                e.preventDefault();
+                if (!enableDelivery) return;
+                setDeliveryOpen(true);
+                return;
+            }
+            if (e.key === 'F9') {
+                e.preventDefault();
+                clearCartRef.current();
+            }
+        };
+
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [
+        overlayOpen,
+        variantPicker,
+        cart.length,
+        busy,
+        enableDelivery,
+        focusSearch,
+        showHotkeyHelp,
+    ]);
 
     const checkout = async ({ customer_id, payments, foc = false }) => {
         const resolvedCustomerId = customer_id || walkInCustomerId || null;
@@ -717,33 +882,47 @@ export default function Index({
                         <button
                             type="button"
                             onClick={openTodayHistory}
+                            title="Today (F7)"
                             className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                         >
                             <History className="h-3.5 w-3.5" strokeWidth={2} />
                             <span className="hidden sm:inline">Today</span>
+                            <KeyHint>F7</KeyHint>
                         </button>
                         {enableDelivery && (
                             <button
                                 type="button"
                                 onClick={() => setDeliveryOpen(true)}
+                                title="Delivery (F8)"
                                 className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                             >
                                 <Truck className="h-3.5 w-3.5" strokeWidth={2} />
                                 <span className="hidden sm:inline">Delivery</span>
+                                <KeyHint>F8</KeyHint>
                             </button>
                         )}
                         <button
                             type="button"
                             onClick={() => setParkedOpen(true)}
+                            title="Saved bills (F6)"
                             className="relative inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                         >
                             <Clock3 className="h-3.5 w-3.5" strokeWidth={2} />
                             <span className="hidden sm:inline">Saved</span>
+                            <KeyHint>F6</KeyHint>
                             {parkedBills.length > 0 && (
                                 <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-mark)] px-0.5 text-[9px] font-bold text-white">
                                     {parkedBills.length}
                                 </span>
                             )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={showHotkeyHelp}
+                            className="inline-flex h-8 items-center justify-center rounded-md border border-theme-border bg-theme-bg px-2 text-theme-ink-muted transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            title="Keyboard shortcuts (?)"
+                        >
+                            <Keyboard className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
                         <button
                             type="button"
@@ -774,7 +953,7 @@ export default function Index({
                 </div>
             )}
 
-            <div className="mx-auto grid w-full max-w-[1700px] flex-1 gap-3 p-3 lg:grid-cols-[200px_minmax(0,1fr)_min(100%,400px)] lg:gap-4 lg:p-4">
+            <div className="grid w-full flex-1 gap-3 p-3 lg:grid-cols-[200px_minmax(0,1fr)_min(100%,400px)] lg:gap-4 lg:p-4">
                 <aside className="pos-rise hidden min-h-0 lg:flex lg:flex-col">
                     <div className="dp-card flex min-h-0 flex-1 flex-col overflow-hidden">
                         <div className="border-b border-theme-border px-3 py-3">
@@ -846,9 +1025,15 @@ export default function Index({
                                     ))}
                                 </select>
                             </div>
-                            <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-theme-ink-muted">
-                                <Barcode className="h-3.5 w-3.5 text-theme-primary" />
-                                Scan or search
+                            <label className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-theme-ink-muted">
+                                <span className="inline-flex items-center gap-2">
+                                    <Barcode className="h-3.5 w-3.5 text-theme-primary" />
+                                    Scan or search
+                                </span>
+                                <span className="inline-flex items-center gap-1 normal-case tracking-normal">
+                                    <KeyHint>F2</KeyHint>
+                                    <KeyHint>/</KeyHint>
+                                </span>
                             </label>
                             <div className="relative">
                                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-theme-ink-muted" />
@@ -964,10 +1149,11 @@ export default function Index({
                                 <button
                                     type="button"
                                     onClick={clearCart}
-                                    className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-theme-ink-muted transition hover:bg-theme-bg hover:text-theme-danger"
-                                    title="Clear order"
+                                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-1.5 text-theme-ink-muted transition hover:bg-theme-bg hover:text-theme-danger"
+                                    title="Clear order (F9)"
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
+                                    <KeyHint>F9</KeyHint>
                                 </button>
                             )}
                         </div>
@@ -1178,18 +1364,26 @@ export default function Index({
                                     type="button"
                                     disabled={!cart.length || busy}
                                     onClick={saveForLater}
+                                    title="Save for later (F3)"
                                     className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-theme-border bg-theme-bg py-3 text-sm font-semibold text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink disabled:cursor-not-allowed disabled:opacity-45"
                                 >
                                     <Bookmark className="h-4 w-4" strokeWidth={2} />
-                                    {parkedSaleId ? 'Update saved' : 'Save for later'}
+                                    <span className="truncate">
+                                        {parkedSaleId ? 'Update saved' : 'Save for later'}
+                                    </span>
+                                    <KeyHint>F3</KeyHint>
                                 </button>
                                 <button
                                     type="button"
                                     disabled={!cart.length || busy}
                                     onClick={openPay}
-                                    className="pos-pay-btn rounded-xl py-3 text-sm font-bold tracking-wide disabled:cursor-not-allowed"
+                                    title="Pay (F4)"
+                                    className="pos-pay-btn inline-flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-bold tracking-wide disabled:cursor-not-allowed"
                                 >
                                     Pay
+                                    <kbd className="hidden rounded border border-white/30 bg-black/10 px-1 py-px font-mono text-[9px] font-semibold leading-none sm:inline">
+                                        F4
+                                    </kbd>
                                 </button>
                             </div>
                         </div>
