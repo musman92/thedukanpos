@@ -19,6 +19,7 @@ return [
         '127.0.0.1',
         'localhost',
         'dukanpos.test',
+        'app.thedukanpos.com',
     ],
 
     /**
