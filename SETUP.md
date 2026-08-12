@@ -124,6 +124,8 @@ Create more shops from the UI at `/platform/tenants`, or with the same artisan c
 npm run build
 ```
 
+Built files land in `public/build` and are **committed to git**, so the server can serve them without Node. Re-run `npm run build` after frontend changes, then commit the updated `public/build`.
+
 Then you only need `php artisan serve`.
 
 **Option B — Vite HMR while developing**
