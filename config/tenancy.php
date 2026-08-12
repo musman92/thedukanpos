@@ -48,8 +48,9 @@ return [
         'template_tenant_connection' => null,
 
         /**
-         * Tenant database names are created like this:
-         * prefix + tenant_id + suffix.
+         * Tenant database names (see TenancyServiceProvider::configureDatabaseNames):
+         * prefix + code + "_" + first UUID segment + suffix
+         * e.g. dukanpos_tenant_shop1_d9bdf96d
          */
         'prefix' => 'dukanpos_tenant_',
         'suffix' => '',

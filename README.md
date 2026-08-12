@@ -129,7 +129,7 @@ public/build/
 - Login lookup helpers (optional: email/username → tenant map)
 - Tenant provisioning metadata
 
-**Tenant DB** (e.g. `dukanpos_tenant_shop1`)
+**Tenant DB** (e.g. `dukanpos_tenant_shop1_d9bdf96d`)
 
 - Users, roles, permissions
 - Branches

@@ -91,11 +91,36 @@ class TenancyServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        $this->configureDatabaseNames();
         $this->bootEvents();
         $this->mapRoutes();
 
         // Domain/path identification middleware is unused (session + header only).
         // Do not raise their priority — they break asset()/Vite when applied.
+    }
+
+    /**
+     * Tenant DB: {prefix}{code}_{uuid-head}
+     * Example: dukanpos_tenant_shop1_d9bdf96d
+     */
+    protected function configureDatabaseNames(): void
+    {
+        \Stancl\Tenancy\DatabaseConfig::generateDatabaseNamesUsing(function ($tenant) {
+            $code = strtolower((string) ($tenant->code ?? ''));
+            $code = preg_replace('/[^a-z0-9-]+/', '', $code) ?: 'tenant';
+
+            $id = (string) $tenant->getTenantKey();
+            $short = strtolower((string) (explode('-', $id)[0] ?? ''));
+            if ($short === '') {
+                $short = substr(str_replace('-', '', strtolower($id)), 0, 8);
+            }
+
+            return config('tenancy.database.prefix')
+                .$code
+                .'_'
+                .$short
+                .config('tenancy.database.suffix');
+        });
     }
 
     protected function bootEvents()

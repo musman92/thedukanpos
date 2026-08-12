@@ -145,14 +145,23 @@ TENANT_PASS="${DUKAN_TENANT_PASSWORD:-password}"
 
 if [[ "$FRESH" -eq 1 ]]; then
   # After migrate:fresh, tenants table is empty but tenant DBs may linger.
+  # Names look like: dukanpos_tenant_{code}_{uuid-head}
   php -r "
     require 'vendor/autoload.php';
     \$app = require 'bootstrap/app.php';
     \$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-    \$db = 'dukanpos_tenant_${TENANT_CODE}';
+    \$code = preg_replace('/[^a-z0-9-]+/', '', strtolower('${TENANT_CODE}')) ?: 'tenant';
+    \$like = 'dukanpos_tenant_'.\$code.'_%';
+    \$legacy = 'dukanpos_tenant_'.\$code;
     try {
-        Illuminate\Support\Facades\DB::statement('DROP DATABASE IF EXISTS \`'.\$db.'\`');
-        echo \"Dropped {\$db}\n\";
+        \$rows = Illuminate\Support\Facades\DB::select(
+            'SELECT SCHEMA_NAME AS name FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE ? OR SCHEMA_NAME = ?',
+            [\$like, \$legacy]
+        );
+        foreach (\$rows as \$row) {
+            Illuminate\Support\Facades\DB::statement('DROP DATABASE IF EXISTS \`'.\$row->name.'\`');
+            echo \"Dropped {\$row->name}\n\";
+        }
     } catch (Throwable \$e) {
         fwrite(STDERR, \$e->getMessage().PHP_EOL);
     }

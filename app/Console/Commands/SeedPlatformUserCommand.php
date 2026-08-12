@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 class SeedPlatformUserCommand extends Command
 {
     protected $signature = 'dukan:seed-platform
-        {--email=admin@dukanpos.test : Platform login email}
+        {--email=musmannadeem92@gmail.com : Platform login email}
         {--password=password : Platform password}
         {--name=Platform Admin : Display name}';
 

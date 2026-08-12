@@ -71,7 +71,7 @@ Or from the shell (if `mysql` CLI is available):
 mysql -uroot -e "CREATE DATABASE IF NOT EXISTS dukanpos_landlord CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-Tenant databases (e.g. `dukanpos_tenant_shop1`) are created automatically when you provision a shop.
+Tenant databases (e.g. `dukanpos_tenant_shop1_d9bdf96d`) are created automatically when you provision a shop.
 
 ---
 
@@ -101,7 +101,7 @@ php artisan dukan:create-tenant shop1 --name="Demo Shop" --password=password
 This creates:
 
 - Tenant code: `shop1`
-- DB: `dukanpos_tenant_shop1`
+- DB: `dukanpos_tenant_shop1_{uuid-head}` (e.g. `dukanpos_tenant_shop1_d9bdf96d`)
 - User: `admin` (login as `admin@shop1`)
 - Password: `password`
 - Default branch, units, taxes, money sources
