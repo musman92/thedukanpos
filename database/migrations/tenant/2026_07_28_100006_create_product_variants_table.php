@@ -77,7 +77,6 @@ return new class extends Migration
             $onDelete = in_array($table, ['branch_stocks', 'product_locations'], true) ? 'cascade' : 'set null';
             $blueprint->foreignId('variant_id')
                 ->nullable()
-                ->after('product_id')
                 ->constrained('product_variants')
                 ->{$onDelete === 'cascade' ? 'cascadeOnDelete' : 'nullOnDelete'}();
         });
@@ -104,30 +103,30 @@ return new class extends Migration
 
     protected function dropForeignIfExists(string $table, string $name): void
     {
-        $exists = collect(DB::select("
-            SELECT CONSTRAINT_NAME
-            FROM information_schema.TABLE_CONSTRAINTS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = ?
-              AND CONSTRAINT_TYPE = 'FOREIGN KEY'
-              AND CONSTRAINT_NAME = ?
-        ", [$table, $name]))->isNotEmpty();
+        $exists = collect(Schema::getForeignKeys($table))
+            ->contains(fn (array $fk) => ($fk['name'] ?? null) === $name);
 
-        if ($exists) {
-            Schema::table($table, function (Blueprint $blueprint) use ($name) {
-                $blueprint->dropForeign($name);
-            });
+        if (! $exists) {
+            return;
         }
+
+        Schema::table($table, function (Blueprint $blueprint) use ($name) {
+            $blueprint->dropForeign($name);
+        });
     }
 
     protected function dropIndexIfExists(string $table, string $name): void
     {
-        $exists = collect(DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$name]))->isNotEmpty();
-        if ($exists) {
-            Schema::table($table, function (Blueprint $blueprint) use ($name) {
-                $blueprint->dropUnique($name);
-            });
+        $exists = collect(Schema::getIndexes($table))
+            ->contains(fn (array $idx) => ($idx['name'] ?? null) === $name);
+
+        if (! $exists) {
+            return;
         }
+
+        Schema::table($table, function (Blueprint $blueprint) use ($name) {
+            $blueprint->dropUnique($name);
+        });
     }
 
     public function down(): void
