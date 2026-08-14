@@ -1,5 +1,7 @@
 import AdminHeaderActions from '@/Components/AdminHeaderActions';
+import MobileFab from '@/Components/Ui/MobileFab';
 import PageHeader from '@/Components/Ui/PageHeader';
+import ResponsiveTableScope from '@/Components/Ui/ResponsiveTableScope';
 import { useI18n } from '@/hooks/useI18n';
 import { Link, usePage } from '@inertiajs/react';
 import {
@@ -223,7 +225,13 @@ function NavGroup({ mod, current, open, onToggle, t }) {
     );
 }
 
-export default function AdminLayout({ title, description = null, children, actions = null }) {
+export default function AdminLayout({
+    title,
+    description = null,
+    children,
+    actions = null,
+    mobileFab = null,
+}) {
     const { flash } = usePage().props;
     const { t } = useI18n();
     const current = route().current();
@@ -360,15 +368,26 @@ export default function AdminLayout({ title, description = null, children, actio
                     <AdminHeaderActions />
                 </header>
 
-                <main className="dp-mobile-content flex-1 overflow-x-hidden px-3 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-5 lg:pb-5">
+                <main
+                    className={`dp-mobile-content flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-5 lg:pb-5 ${
+                        mobileFab
+                            ? 'pb-[calc(9.5rem+env(safe-area-inset-bottom))]'
+                            : 'pb-[calc(5.75rem+env(safe-area-inset-bottom))]'
+                    }`}
+                >
                     {flash?.status && <div className="dp-flash mb-4 px-4 py-3 text-sm">{flash.status}</div>}
                     {flash?.error && (
                         <div className="mb-4 rounded-lg border border-theme-danger/30 bg-theme-danger/10 px-4 py-3 text-sm text-theme-danger">
                             {flash.error}
                         </div>
                     )}
-                    <PageHeader title={title} description={description} actions={actions} />
-                    {children}
+                    <PageHeader
+                        title={title}
+                        description={description}
+                        actions={actions}
+                        hideOnMobile={Boolean(mobileFab)}
+                    />
+                    <ResponsiveTableScope>{children}</ResponsiveTableScope>
                 </main>
             </div>
 
@@ -399,6 +418,8 @@ export default function AdminLayout({ title, description = null, children, actio
                     <span>Menu</span>
                 </button>
             </nav>
+
+            {mobileFab && <MobileFab actions={mobileFab} />}
         </div>
     );
 }

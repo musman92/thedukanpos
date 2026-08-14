@@ -93,15 +93,19 @@ function PaginationLinks({ paginator }) {
 
 /**
  * Table footer: "Showing x–y of z" on the left, page links on the right.
+ * Pass `pageLimit` to keep the rows-per-page control beside the count.
  */
-export default function Pagination({ paginator }) {
+export default function Pagination({ paginator, pageLimit = null }) {
     if (!paginator) return null;
 
     return (
-        <div className="flex flex-col items-center justify-between gap-2 border-t border-theme-border px-3 py-3 sm:flex-row sm:px-4">
-            <p className="text-xs text-theme-ink-muted sm:text-sm">
-                Showing {paginator.from || 0}-{paginator.to || 0} of {paginator.total}
-            </p>
+        <div className="flex flex-col gap-2 border-t border-theme-border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-start sm:gap-4">
+                <p className="text-xs text-theme-ink-muted sm:text-sm">
+                    Showing {paginator.from || 0}-{paginator.to || 0} of {paginator.total}
+                </p>
+                {pageLimit}
+            </div>
             <PaginationLinks paginator={paginator} />
         </div>
     );

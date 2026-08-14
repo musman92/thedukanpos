@@ -5,12 +5,12 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Check,
     ChevronDown,
-    CirclePlay,
     GitBranch,
     LayoutDashboard,
     LogOut,
+    Play,
     Settings,
-    StopCircle,
+    Square,
     Store,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -52,7 +52,7 @@ function ShiftButton({ openShift, t }) {
                 title={t('header.start_shift')}
                 aria-label={t('header.start_shift')}
             >
-                <CirclePlay className="h-4 w-4 shrink-0" strokeWidth={2} />
+                <Play className="h-4 w-4 shrink-0" fill="currentColor" strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('header.start_shift')}</span>
             </Link>
         );
@@ -66,7 +66,7 @@ function ShiftButton({ openShift, t }) {
             title={t('header.end_shift')}
             aria-label={t('header.end_shift')}
         >
-            <StopCircle className="h-4 w-4 shrink-0" strokeWidth={2} />
+            <Square className="h-4 w-4 shrink-0" fill="currentColor" strokeWidth={1.5} />
             <span className="hidden md:inline">{t('header.end_shift')}</span>
         </Link>
     );

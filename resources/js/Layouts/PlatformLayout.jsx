@@ -1,4 +1,5 @@
 import PageHeader from '@/Components/Ui/PageHeader';
+import ResponsiveTableScope from '@/Components/Ui/ResponsiveTableScope';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import {
@@ -195,7 +196,7 @@ export default function PlatformLayout({ title, description = null, children, ac
                         </div>
                     )}
                     <PageHeader title={title} description={description} actions={actions} />
-                    {children}
+                    <ResponsiveTableScope>{children}</ResponsiveTableScope>
                 </main>
             </div>
 

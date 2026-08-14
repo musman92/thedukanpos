@@ -1,0 +1,1 @@
+import{c as e,g as o,d as a,r as c,t as l,i}from"./boot-C8NTUsHg.js";function u(){const{i18n:t}=e().props,r=t?.locale||o(),s=t?.dir||a();return c.useMemo(()=>({t:l,locale:r,dir:s,rtl:t?.rtl??i()}),[r,s,t?.rtl])}export{u};

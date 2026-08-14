@@ -19,6 +19,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+# Per-tenant uploads (logos, products, brands). Never commit runtime media.
+/storage/tenant*
 /vendor
 Homestead.json
 Homestead.yaml
