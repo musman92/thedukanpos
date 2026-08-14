@@ -28,9 +28,11 @@ import {
     Plus,
     Receipt,
     Search,
+    ShoppingCart,
     Trash2,
     Truck,
     UserPlus,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
@@ -241,6 +243,7 @@ export default function Index({
     const [todaySales, setTodaySales] = useState([]);
     const [todayLoading, setTodayLoading] = useState(false);
     const [deliveryOpen, setDeliveryOpen] = useState(false);
+    const [mobileCartOpen, setMobileCartOpen] = useState(false);
     const [payOpen, setPayOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [busy, setBusy] = useState(false);
@@ -291,6 +294,14 @@ export default function Index({
     useEffect(() => {
         searchRef.current?.focus();
     }, []);
+
+    useEffect(() => {
+        if (!mobileCartOpen) return undefined;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [mobileCartOpen]);
 
     const loadCatalog = useCallback(async (selected) => {
         const seq = ++catalogSeq.current;
@@ -690,6 +701,7 @@ export default function Index({
         todayOpen ||
         parkedOpen ||
         deliveryOpen ||
+        mobileCartOpen ||
         quickCustomerOpen ||
         !!variantPicker;
 
@@ -704,6 +716,9 @@ export default function Index({
                 if (variantPicker) {
                     e.preventDefault();
                     setVariantPicker(null);
+                } else if (mobileCartOpen) {
+                    e.preventDefault();
+                    setMobileCartOpen(false);
                 }
                 return;
             }
@@ -769,6 +784,7 @@ export default function Index({
     }, [
         overlayOpen,
         variantPicker,
+        mobileCartOpen,
         cart.length,
         busy,
         enableDelivery,
@@ -846,6 +862,7 @@ export default function Index({
             setRiderId('');
             setParkedSaleId(null);
             setPayOpen(false);
+            setMobileCartOpen(false);
             router.visit(route('pos.receipt', completedId));
         } catch (err) {
             setMessage(err.response?.data?.message || 'Checkout failed');
@@ -855,11 +872,11 @@ export default function Index({
     };
 
     return (
-        <div className="pos-shell flex min-h-screen flex-col text-theme-ink">
+        <div className="pos-shell flex min-h-[100dvh] flex-col text-theme-ink">
             <Head title="POS" />
 
-            <header className="sticky top-0 z-30 border-b border-theme-border/80 bg-theme-surface/90 backdrop-blur-md">
-                <div className="flex h-11 items-center justify-between gap-3 px-3 sm:px-4">
+            <header className="sticky top-0 z-30 border-b border-theme-border/80 bg-theme-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+                <div className="flex min-h-12 items-center justify-between gap-2 px-2 sm:px-4">
                     <div className="flex min-w-0 items-center gap-2">
                         <div
                             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
@@ -883,7 +900,7 @@ export default function Index({
                             type="button"
                             onClick={openTodayHistory}
                             title="Today (F7)"
-                            className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            className="inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                         >
                             <History className="h-3.5 w-3.5" strokeWidth={2} />
                             <span className="hidden sm:inline">Today</span>
@@ -894,7 +911,7 @@ export default function Index({
                                 type="button"
                                 onClick={() => setDeliveryOpen(true)}
                                 title="Delivery (F8)"
-                                className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                                className="inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                             >
                                 <Truck className="h-3.5 w-3.5" strokeWidth={2} />
                                 <span className="hidden sm:inline">Delivery</span>
@@ -905,7 +922,7 @@ export default function Index({
                             type="button"
                             onClick={() => setParkedOpen(true)}
                             title="Saved bills (F6)"
-                            className="relative inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            className="relative inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                         >
                             <Clock3 className="h-3.5 w-3.5" strokeWidth={2} />
                             <span className="hidden sm:inline">Saved</span>
@@ -919,7 +936,7 @@ export default function Index({
                         <button
                             type="button"
                             onClick={showHotkeyHelp}
-                            className="inline-flex h-8 items-center justify-center rounded-md border border-theme-border bg-theme-bg px-2 text-theme-ink-muted transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            className="hidden h-10 min-w-10 items-center justify-center rounded-md border border-theme-border bg-theme-bg px-2 text-theme-ink-muted transition hover:border-theme-primary/40 hover:text-theme-ink sm:inline-flex"
                             title="Keyboard shortcuts (?)"
                         >
                             <Keyboard className="h-3.5 w-3.5" strokeWidth={2} />
@@ -927,7 +944,7 @@ export default function Index({
                         <button
                             type="button"
                             onClick={() => goAdmin('/admin')}
-                            className="inline-flex h-8 items-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            className="inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
                             title="Back office"
                         >
                             <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={2} />
@@ -953,7 +970,7 @@ export default function Index({
                 </div>
             )}
 
-            <div className="grid w-full flex-1 gap-3 p-3 lg:grid-cols-[200px_minmax(0,1fr)_min(100%,400px)] lg:gap-4 lg:p-4">
+            <div className="grid w-full flex-1 gap-3 p-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-3 lg:grid-cols-[200px_minmax(0,1fr)_min(100%,400px)] lg:gap-4 lg:p-4">
                 <aside className="pos-rise hidden min-h-0 lg:flex lg:flex-col">
                     <div className="dp-card flex min-h-0 flex-1 flex-col overflow-hidden">
                         <div className="border-b border-theme-border px-3 py-3">
@@ -1054,8 +1071,8 @@ export default function Index({
                                 <div
                                     className={`grid gap-1.5 ${
                                         showProductImage
-                                            ? 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
-                                            : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'
+                                            ? 'grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+                                            : 'grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7'
                                     }`}
                                 >
                                     {products.map((p, i) => (
@@ -1105,11 +1122,23 @@ export default function Index({
                     </div>
                 </section>
 
+                {mobileCartOpen && (
+                    <button
+                        type="button"
+                        className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] lg:hidden"
+                        onClick={() => setMobileCartOpen(false)}
+                        aria-label="Close cart"
+                    />
+                )}
+
                 <aside
-                    className="pos-rise flex min-h-0 flex-col lg:sticky lg:top-14 lg:max-h-[calc(100vh-4.25rem)]"
+                    className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[91dvh] min-h-0 flex-col rounded-t-2xl bg-theme-surface pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-200 lg:sticky lg:top-14 lg:z-auto lg:max-h-[calc(100vh-4.25rem)] lg:translate-y-0 lg:rounded-none lg:bg-transparent lg:pb-0 lg:shadow-none ${
+                        mobileCartOpen ? 'translate-y-0' : 'translate-y-full'
+                    }`}
                     style={{ animationDelay: '60ms' }}
                 >
-                    <div className="dp-card flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-theme-border-strong lg:hidden" />
+                    <div className="dp-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-2xl lg:rounded-xl">
                         <div className="flex items-center gap-2 border-b border-theme-border px-3 py-2">
                             <div className="flex min-w-0 shrink-0 items-center gap-2">
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-theme-primary">
@@ -1156,6 +1185,14 @@ export default function Index({
                                     <KeyHint>F9</KeyHint>
                                 </button>
                             )}
+                            <button
+                                type="button"
+                                onClick={() => setMobileCartOpen(false)}
+                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-theme-ink-muted lg:hidden"
+                                aria-label="Close cart"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
                         </div>
 
                         <div className="min-h-0 flex-1 space-y-1.5 overflow-auto px-2.5 py-2.5">
@@ -1389,6 +1426,36 @@ export default function Index({
                         </div>
                     </div>
                 </aside>
+            </div>
+
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-theme-border bg-theme-surface/95 p-2 pb-[max(.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden">
+                <button
+                    type="button"
+                    onClick={() => setMobileCartOpen(true)}
+                    className="pos-pay-btn flex min-h-14 w-full items-center justify-between rounded-xl px-4"
+                >
+                    <span className="flex items-center gap-3">
+                        <span className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
+                            <ShoppingCart className="h-5 w-5" />
+                            {cart.length > 0 && (
+                                <span className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-brand-mark)] px-1 text-[10px] font-bold text-white">
+                                    {cart.length}
+                                </span>
+                            )}
+                        </span>
+                        <span className="text-start">
+                            <span className="block text-sm font-bold">View order</span>
+                            <span className="block text-[11px] opacity-80">
+                                {cart.length
+                                    ? `${cart.length} item${cart.length === 1 ? '' : 's'}`
+                                    : 'Cart is empty'}
+                            </span>
+                        </span>
+                    </span>
+                    <span className="text-base font-bold tabular-nums">
+                        {formatMoney(totals.total, moneyCfg)}
+                    </span>
+                </button>
             </div>
 
             <TodayHistoryDrawer

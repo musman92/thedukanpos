@@ -11,10 +11,10 @@ export default function Login() {
     });
 
     return (
-        <div className="relative flex min-h-screen items-center justify-center bg-theme-bg px-4">
+        <div className="relative flex min-h-[100dvh] items-center justify-center bg-theme-bg px-3 py-[max(1rem,env(safe-area-inset-top))] sm:px-4">
             <Head title="Platform login" />
 
-            <div className="absolute right-4 top-4">
+            <div className="absolute right-3 top-[max(.75rem,env(safe-area-inset-top))] sm:right-4">
                 <ThemeToggle />
             </div>
 
@@ -23,7 +23,7 @@ export default function Login() {
                     e.preventDefault();
                     post(route('platform.login.store'));
                 }}
-                className="dp-card w-full max-w-md overflow-visible p-6"
+                className="dp-card w-full max-w-md overflow-visible rounded-2xl p-4 sm:p-6"
             >
                 <div className="mb-6 flex items-center gap-3">
                     <div

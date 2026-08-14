@@ -239,7 +239,7 @@ export default function MoneySourceTxns({
                 </div>
             </div>
 
-            <div className="mb-6 overflow-hidden rounded-xl border border-theme-border">
+            <div className="mb-6 overflow-x-auto rounded-xl border border-theme-border">
                 <div className="border-b border-theme-border bg-theme-bg px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-theme-ink">Totals by money source</h3>
                 </div>
@@ -291,7 +291,7 @@ export default function MoneySourceTxns({
                 </table>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-theme-border">
+            <div className="overflow-x-auto rounded-xl border border-theme-border">
                 <div className="border-b border-theme-border bg-theme-bg px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-theme-ink">Transactions</h3>
                 </div>

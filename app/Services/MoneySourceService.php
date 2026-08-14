@@ -17,7 +17,7 @@ class MoneySourceService
      */
     public function seedDefaults(): void
     {
-        MoneySource::query()->firstOrCreate(
+        $cash = MoneySource::query()->firstOrCreate(
             ['code' => 'cash'],
             [
                 'name' => 'Cash',
@@ -30,20 +30,7 @@ class MoneySourceService
             ],
         );
 
-        MoneySource::query()->firstOrCreate(
-            ['code' => 'card'],
-            [
-                'name' => 'Card',
-                'type' => 'BANK',
-                'opening_balance' => 0,
-                'balance' => 0,
-                'is_active' => true,
-                'exclude_from_dashboard_profit' => false,
-                'is_system' => true,
-            ],
-        );
-
-        MoneySource::query()->firstOrCreate(
+        $ownerWithdrawal = MoneySource::query()->firstOrCreate(
             ['system_key' => MoneySource::SYSTEM_OWNER_WITHDRAWAL],
             [
                 'name' => 'Owner Withdrawal',
@@ -57,10 +44,20 @@ class MoneySourceService
             ],
         );
 
+        // Cash is the only protected operational default. Any legacy Card/Bank/App
+        // source previously marked as system is a normal, user-managed source.
         MoneySource::query()
-            ->whereIn('code', ['cash', 'card'])
-            ->where('is_system', false)
-            ->update(['is_system' => true]);
+            ->where('is_system', true)
+            ->whereNotIn('id', [$cash->id, $ownerWithdrawal->id])
+            ->update(['is_system' => false]);
+
+        if (! $cash->is_system) {
+            $cash->update(['is_system' => true]);
+        }
+
+        if (! $ownerWithdrawal->is_system) {
+            $ownerWithdrawal->update(['is_system' => true]);
+        }
 
         $branchIds = Branch::query()->where('is_active', true)->pluck('id');
         if ($branchIds->isEmpty()) {
@@ -115,7 +112,7 @@ class MoneySourceService
             ->through(fn (MoneySource $source) => $this->serializeSource($source));
 
         $systemSources = MoneySource::query()
-            ->where('is_system', true)
+            ->where('system_key', MoneySource::SYSTEM_OWNER_WITHDRAWAL)
             ->orderBy('name')
             ->get()
             ->map(fn (MoneySource $source) => $this->serializeSource($source));

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\MoneySource;
@@ -57,7 +58,7 @@ class TenantBootstrapService
 
     public function seedMoneySources(): void
     {
-        MoneySource::query()->firstOrCreate(
+        $cash = MoneySource::query()->firstOrCreate(
             ['code' => 'cash'],
             [
                 'name' => 'Cash',
@@ -69,19 +70,7 @@ class TenantBootstrapService
             ],
         );
 
-        MoneySource::query()->firstOrCreate(
-            ['code' => 'card'],
-            [
-                'name' => 'Card',
-                'type' => 'BANK',
-                'opening_balance' => 0,
-                'balance' => 0,
-                'is_active' => true,
-                'is_system' => true,
-            ],
-        );
-
-        MoneySource::query()->firstOrCreate(
+        $ownerWithdrawal = MoneySource::query()->firstOrCreate(
             ['system_key' => MoneySource::SYSTEM_OWNER_WITHDRAWAL],
             [
                 'name' => 'Owner Withdrawal',
@@ -94,11 +83,26 @@ class TenantBootstrapService
             ],
         );
 
-        // Existing tenants may have cash/card without the system flag.
+        // Cash is the only protected operational default. Other sources are
+        // user-managed even if an older release marked them as system records.
         MoneySource::query()
-            ->whereIn('code', ['cash', 'card'])
-            ->where('is_system', false)
-            ->update(['is_system' => true]);
+            ->where('is_system', true)
+            ->whereNotIn('id', [$cash->id, $ownerWithdrawal->id])
+            ->update(['is_system' => false]);
+
+        if (! $cash->is_system) {
+            $cash->update(['is_system' => true]);
+        }
+
+        if (! $ownerWithdrawal->is_system) {
+            $ownerWithdrawal->update(['is_system' => true]);
+        }
+
+        $branchIds = Branch::query()->where('is_active', true)->pluck('id');
+        if ($branchIds->isNotEmpty()) {
+            $cash->branches()->syncWithoutDetaching($branchIds->all());
+            $ownerWithdrawal->branches()->syncWithoutDetaching($branchIds->all());
+        }
     }
 
     public function seedGeneralCategory(?int $defaultTaxId = null): Category

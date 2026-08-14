@@ -76,7 +76,7 @@ export default function Generic({
                 </div>
             )}
 
-            <div className="overflow-hidden rounded-xl border border-theme-border">
+            <div className="overflow-x-auto rounded-xl border border-theme-border">
                 <table className="min-w-full text-left text-sm">
                     <thead className="bg-theme-bg text-theme-ink-muted">
                         <tr>

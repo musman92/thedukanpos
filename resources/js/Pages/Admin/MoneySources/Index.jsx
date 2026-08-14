@@ -112,15 +112,15 @@ export default function Index({
                                 e.preventDefault();
                                 visitList({ q });
                             }}
-                            className="flex items-center gap-2"
+                            className="flex w-full items-center gap-2 sm:w-auto"
                         >
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-theme-ink-muted" />
                                 <input
                                     value={q}
                                     onChange={(e) => setQ(e.target.value)}
                                     placeholder="Search sources"
-                                    className="h-9 w-48 rounded-lg border border-theme-border bg-theme-surface py-1.5 pl-8 pr-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                    className="h-9 w-full sm:w-48 rounded-lg border border-theme-border bg-theme-surface py-1.5 pl-8 pr-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
                                 />
                             </div>
                             <Button type="submit" variant="secondary" size="sm">
@@ -227,26 +227,32 @@ export default function Index({
                                             {source.branches_count === 1 ? 'branch' : 'branches'}
                                         </td>
                                         <td className="px-3 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button
-                                                    type="button"
-                                                    title="Edit"
-                                                    aria-label="Edit"
-                                                    onClick={() => openEdit(source)}
-                                                    className="inline-flex rounded-md p-1.5 text-theme-primary hover:bg-theme-bg"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    title="Delete"
-                                                    aria-label="Delete"
-                                                    onClick={() => destroySource(source)}
-                                                    className="inline-flex rounded-md p-1.5 text-theme-danger hover:bg-theme-danger/10"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </div>
+                                            {source.is_system ? (
+                                                <span className="text-xs text-theme-ink-muted">
+                                                    Default
+                                                </span>
+                                            ) : (
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        title="Edit"
+                                                        aria-label="Edit"
+                                                        onClick={() => openEdit(source)}
+                                                        className="inline-flex rounded-md p-1.5 text-theme-primary hover:bg-theme-bg"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        title="Delete"
+                                                        aria-label="Delete"
+                                                        onClick={() => destroySource(source)}
+                                                        className="inline-flex rounded-md p-1.5 text-theme-danger hover:bg-theme-danger/10"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -260,12 +266,15 @@ export default function Index({
                 {systemSources.length > 0 && (
                     <div className="mt-6 overflow-hidden rounded-xl border border-theme-border">
                         <div className="border-b border-theme-border px-4 py-3">
-                            <h3 className="text-sm font-semibold text-theme-ink">System buckets</h3>
+                            <h3 className="text-sm font-semibold text-theme-ink">
+                                Owner withdrawal
+                            </h3>
                             <p className="text-xs text-theme-ink-muted">
-                                Not used for POS or payments — track cumulative owner withdrawals
+                                Tracks money taken by the owner without treating it as a business
+                                expense or reducing reported profit.
                             </p>
                         </div>
-                        <table className="min-w-full text-left text-sm">
+                        <table className="min-w-full text-start text-sm">
                             <thead className="bg-theme-bg text-[11px] uppercase tracking-wide text-theme-ink-muted">
                                 <tr>
                                     <th className="px-3 py-3 font-semibold">Name</th>

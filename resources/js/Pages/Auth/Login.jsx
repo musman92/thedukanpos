@@ -87,7 +87,10 @@ export default function Login({ status }) {
                 </div>
 
                 <div className="mt-6 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
+                    <PrimaryButton
+                        className="w-full min-h-12 justify-center sm:ms-4 sm:w-auto sm:min-h-0"
+                        disabled={processing}
+                    >
                         {t('auth.log_in')}
                     </PrimaryButton>
                 </div>

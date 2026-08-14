@@ -7,8 +7,9 @@ import {
     LayoutDashboard,
     LogOut,
     PanelLeft,
+    X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const modules = [
     {
@@ -83,15 +84,43 @@ export default function PlatformLayout({ title, description = null, children, ac
     const { flash } = usePage().props;
     const current = route().current();
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [current]);
+
+    useEffect(() => {
+        if (!mobileOpen) return undefined;
+        document.body.style.overflow = 'hidden';
+        const onKey = (event) => {
+            if (event.key === 'Escape') setMobileOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [mobileOpen]);
 
     return (
-        <div className="dp-app flex min-h-screen">
+        <div className="dp-app flex min-h-[100dvh]">
+            {mobileOpen && (
+                <button
+                    type="button"
+                    aria-label="Close navigation"
+                    className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] lg:hidden"
+                    onClick={() => setMobileOpen(false)}
+                />
+            )}
             <aside
-                className={`dp-sidebar sticky top-0 flex h-screen shrink-0 flex-col transition-[width] ${
+                className={`dp-sidebar fixed inset-y-0 start-0 z-50 flex h-[100dvh] w-[min(86vw,20rem)] shrink-0 flex-col shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none lg:transition-[width] ${
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'
+                } ${
                     collapsed ? 'w-[4.25rem]' : 'w-60'
-                }`}
+                } lg:translate-x-0 rtl:lg:translate-x-0`}
             >
-                <div className="flex h-14 items-center gap-2.5 border-b border-theme-border px-3">
+                <div className="flex min-h-14 items-center gap-2.5 border-b border-theme-border px-3 pt-[env(safe-area-inset-top)]">
                     <div
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
                         style={{ background: 'var(--color-brand-mark)' }}
@@ -104,15 +133,23 @@ export default function PlatformLayout({ title, description = null, children, ac
                             <p className="truncate text-[11px] text-theme-ink-muted">Platform</p>
                         </div>
                     )}
+                    <button
+                        type="button"
+                        onClick={() => setMobileOpen(false)}
+                        className="dp-icon-btn ms-auto min-h-11 min-w-11 lg:hidden"
+                        aria-label="Close navigation"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
-                <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+                <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3">
                     {modules.map((mod) => (
                         <NavLink key={mod.id} mod={mod} current={current} />
                     ))}
                 </nav>
 
-                <div className="border-t border-theme-border p-2.5">
+                <div className="border-t border-theme-border p-2.5 pb-[calc(.625rem+env(safe-area-inset-bottom))]">
                     <div
                         className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-theme-ink-muted ${
                             collapsed ? 'justify-center' : ''
@@ -127,21 +164,30 @@ export default function PlatformLayout({ title, description = null, children, ac
             </aside>
 
             <div className="flex min-w-0 flex-1 flex-col">
-                <header className="dp-header sticky top-0 z-20 flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
+                <header className="dp-header sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-6">
                     <div className="flex min-w-0 items-center gap-3">
                         <button
                             type="button"
-                            onClick={() => setCollapsed((v) => !v)}
-                            className="dp-icon-btn"
+                            onClick={() => {
+                                if (window.matchMedia('(min-width: 1024px)').matches) {
+                                    setCollapsed((v) => !v);
+                                } else {
+                                    setMobileOpen(true);
+                                }
+                            }}
+                            className="dp-icon-btn min-h-11 min-w-11"
                             title="Toggle sidebar"
                         >
                             <PanelLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
                         </button>
+                        <p className="truncate text-sm font-semibold text-theme-ink lg:hidden">
+                            {title || 'Platform'}
+                        </p>
                     </div>
                     <PlatformHeaderActions />
                 </header>
 
-                <main className="flex-1 px-4 py-5 sm:px-6">
+                <main className="dp-mobile-content flex-1 overflow-x-hidden px-3 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-5 lg:pb-5">
                     {flash?.status && <div className="dp-flash mb-4 px-4 py-3 text-sm">{flash.status}</div>}
                     {flash?.error && (
                         <div className="mb-4 rounded-lg border border-theme-danger/30 bg-theme-danger/10 px-4 py-3 text-sm text-theme-danger">
@@ -152,6 +198,29 @@ export default function PlatformLayout({ title, description = null, children, ac
                     {children}
                 </main>
             </div>
+
+            <nav
+                className="dp-mobile-dock fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-theme-border bg-theme-surface/95 px-2 pt-1.5 backdrop-blur-xl lg:hidden"
+                aria-label="Primary navigation"
+            >
+                {modules.map((mod) => {
+                    const Icon = mod.icon;
+                    return (
+                        <Link
+                            key={mod.id}
+                            href={route(mod.href)}
+                            className={moduleMatches(current, mod) ? 'active' : ''}
+                        >
+                            <Icon />
+                            <span>{mod.label}</span>
+                        </Link>
+                    );
+                })}
+                <button type="button" onClick={() => setMobileOpen(true)}>
+                    <PanelLeft />
+                    <span>Menu</span>
+                </button>
+            </nav>
         </div>
     );
 }

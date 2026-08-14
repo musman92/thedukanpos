@@ -84,6 +84,9 @@
     body {
         background: var(--color-bg);
         color: var(--color-ink);
+        min-width: 320px;
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
     }
 
     html[dir='rtl'] body {
@@ -193,9 +196,93 @@
         transition: background 0.12s ease, color 0.12s ease;
     }
 
+    .dp-mobile-dock {
+        padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+        box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .dp-mobile-dock > a,
+    .dp-mobile-dock > button {
+        display: flex;
+        min-width: 0;
+        min-height: 3.5rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        border-radius: 0.75rem;
+        color: var(--color-ink-muted);
+        font-size: 0.6875rem;
+        font-weight: 600;
+    }
+
+    .dp-mobile-dock svg {
+        width: 1.2rem;
+        height: 1.2rem;
+        stroke-width: 1.9;
+    }
+
+    .dp-mobile-dock > .active {
+        color: var(--color-primary);
+        background: var(--color-primary-soft);
+    }
+
     .dp-icon-btn:hover {
         background: var(--color-bg);
         color: var(--color-ink);
+    }
+}
+
+@media (max-width: 639px) {
+    html {
+        font-size: 16px;
+    }
+
+    .dp-card {
+        border-radius: 0.75rem;
+    }
+
+    .dp-icon-btn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    .dp-mobile-content input:not([type='checkbox']):not([type='radio']),
+    .dp-mobile-content select,
+    .dp-mobile-content textarea {
+        font-size: 16px;
+    }
+
+    .dp-mobile-content button,
+    .dp-mobile-content a {
+        touch-action: manipulation;
+    }
+
+    .dp-mobile-content .overflow-x-auto {
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .dp-mobile-content table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .dp-mobile-content table > thead,
+    .dp-mobile-content table > tbody,
+    .dp-mobile-content table > tfoot {
+        white-space: nowrap;
+    }
+
+    .dp-mobile-content td > a,
+    .dp-mobile-content td button {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        align-items: center;
+        justify-content: center;
     }
 }
 
@@ -218,6 +305,17 @@ select.dp-select-reset::-ms-expand {
     }
     to {
         transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes dp-drawer-up {
+    from {
+        transform: translateY(100%);
+        opacity: 0.9;
+    }
+    to {
+        transform: translateY(0);
         opacity: 1;
     }
 }

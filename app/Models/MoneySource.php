@@ -62,7 +62,12 @@ class MoneySource extends Model
 
     public function scopeOperational(Builder $query): Builder
     {
-        return $query->where('is_system', false);
+        return $query
+            ->where(function (Builder $inner) {
+                $inner->whereNull('system_key')
+                    ->orWhere('system_key', '!=', self::SYSTEM_OWNER_WITHDRAWAL);
+            })
+            ->where('type', '!=', 'OWNER_DRAW');
     }
 
     /**
@@ -89,7 +94,7 @@ class MoneySource extends Model
 
     public function isOperational(): bool
     {
-        return ! $this->is_system;
+        return ! $this->isOwnerWithdrawalBucket();
     }
 
     public function isOwnerWithdrawalBucket(): bool

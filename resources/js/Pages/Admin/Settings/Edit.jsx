@@ -306,13 +306,13 @@ export default function Edit({ settings, section = 'general', options = {} }) {
         >
             <Head title="Settings" />
 
-            <div className="mb-4 flex flex-wrap gap-1 border-b border-theme-border">
+            <div className="mb-4 flex snap-x snap-mandatory gap-1 overflow-x-auto border-b border-theme-border">
                 {TABS.map((tab) => (
                     <button
                         key={tab.id}
                         type="button"
                         onClick={() => switchTab(tab.id)}
-                        className={`px-4 py-2.5 text-sm transition ${
+                        className={`min-h-11 shrink-0 snap-start px-4 py-2.5 text-sm transition ${
                             active === tab.id
                                 ? 'border-b-2 border-theme-primary font-medium text-theme-primary'
                                 : 'text-theme-ink-muted hover:text-theme-ink'
@@ -669,8 +669,12 @@ export default function Edit({ settings, section = 'general', options = {} }) {
                     />
                 )}
 
-                <div className="flex justify-end border-t border-theme-border pt-5">
-                    <Button type="submit" disabled={form.processing}>
+                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-3 flex justify-end border-t border-theme-border bg-theme-surface/95 px-3 py-3 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-5 lg:bottom-0">
+                    <Button
+                        type="submit"
+                        disabled={form.processing}
+                        className="w-full sm:w-auto"
+                    >
                         Save settings
                     </Button>
                 </div>

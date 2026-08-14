@@ -48,7 +48,7 @@ export default function Foc({ sales, summary = {}, filters = {}, branch }) {
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-theme-border">
+            <div className="overflow-x-auto rounded-xl border border-theme-border">
                 <div className="border-b border-theme-border bg-theme-bg px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-theme-ink">FOC orders</h3>
                 </div>

@@ -28,7 +28,7 @@ export default function Button({
         <button
             type={type}
             disabled={disabled}
-            className={`inline-flex items-center justify-center gap-2 rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
             {...props}
         >
             {children}

@@ -168,13 +168,13 @@ export default function Stock({
                             />
                         </div>
 
-                        <div className="relative">
+                        <div className="relative w-full sm:w-auto">
                             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-theme-ink-muted" />
                             <input
                                 value={q}
                                 onChange={(e) => setQ(e.target.value)}
                                 placeholder="Name or codes, comma-separated"
-                                className="h-9 w-56 rounded-lg border border-theme-border bg-theme-surface py-1.5 pl-8 pr-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20 sm:w-72"
+                                className="h-9 w-full sm:w-56 rounded-lg border border-theme-border bg-theme-surface py-1.5 pl-8 pr-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20 sm:w-72"
                             />
                         </div>
 

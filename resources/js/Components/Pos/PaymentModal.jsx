@@ -271,117 +271,116 @@ export default function PaymentModal({
 
     const displayError = localError || error;
 
+    const methodButtonClass = (active) =>
+        [
+            'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition',
+            'disabled:cursor-not-allowed disabled:opacity-40',
+            'sm:min-h-0 sm:w-full sm:rounded-lg sm:border-transparent sm:px-2.5 sm:py-2.5 sm:text-left sm:font-medium',
+            active
+                ? 'border-transparent bg-theme-primary text-[var(--color-on-primary)]'
+                : 'border-theme-border bg-theme-surface text-theme-ink-soft hover:border-theme-primary/40 hover:text-theme-ink sm:bg-transparent sm:hover:bg-theme-surface sm:hover:text-theme-ink',
+        ].join(' ');
+
     return (
         <Modal show={open} onClose={onClose} maxWidth="4xl" closeable={!busy}>
-            <div className="flex items-start justify-between gap-4 border-b border-theme-border px-5 py-4">
-                <div>
-                    <h3 className="font-display text-xl tracking-tight text-theme-ink">
-                        Finalize sale
-                    </h3>
-                    <p className="mt-0.5 text-sm text-theme-ink-muted">
-                        Payable{' '}
-                        <span className="font-semibold tabular-nums text-theme-ink">
-                            {formatMoney(payable, moneyCfg)}
-                        </span>
-                    </p>
-                </div>
-                <div className="min-w-[14rem] max-w-xs shrink-0">
-                    <SearchableSelect
-                        size="sm"
-                        options={customerOptions}
-                        value={
-                            customerId === '' || customerId == null
-                                ? walkInCustomerId
-                                : String(customerId)
-                        }
-                        onChange={(v) =>
-                            onCustomerChange(
-                                v === '' || v == null ? walkInCustomerId : String(v),
-                            )
-                        }
-                        placeholder="Walk-in"
-                    />
-                    {selectedCustomer && !selectedCustomer.is_walk_in && (
-                        <p className="mt-1 text-right text-[11px] text-theme-ink-muted">
-                            Balance{' '}
-                            <span
-                                className={
-                                    Number(selectedCustomer.balance) > 0.01
-                                        ? 'font-semibold text-theme-danger'
-                                        : 'tabular-nums'
-                                }
-                            >
-                                {formatMoney(selectedCustomer.balance, moneyCfg)}
+            <div className="flex max-h-[min(94dvh,100%)] flex-col">
+                <div className="flex flex-col gap-3 border-b border-theme-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+                    <div>
+                        <h3 className="font-display text-xl tracking-tight text-theme-ink">
+                            Finalize sale
+                        </h3>
+                        <p className="mt-0.5 text-sm text-theme-ink-muted">
+                            Payable{' '}
+                            <span className="font-semibold tabular-nums text-theme-ink">
+                                {formatMoney(payable, moneyCfg)}
                             </span>
                         </p>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid min-h-[22rem] sm:grid-cols-[200px_minmax(0,1fr)]">
-                <aside className="border-b border-theme-border bg-theme-bg/50 p-3 sm:border-b-0 sm:border-r">
-                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-theme-ink-muted">
-                        Method
-                    </p>
-                    <div className="space-y-1">
-                        <button
-                            type="button"
-                            onClick={() => selectMethod('credit')}
-                            disabled={!creditAvailable}
-                            title={
-                                creditAvailable
-                                    ? 'Charge remaining / full amount on account'
-                                    : 'Select a customer to enable credit'
-                            }
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                                isCredit
-                                    ? 'bg-theme-primary text-[var(--color-on-primary)]'
-                                    : 'text-theme-ink-soft hover:bg-theme-surface hover:text-theme-ink'
-                            }`}
-                        >
-                            <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2} />
-                            Credit
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => selectMethod('foc')}
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition ${
-                                isFoc
-                                    ? 'bg-theme-primary text-[var(--color-on-primary)]'
-                                    : 'text-theme-ink-soft hover:bg-theme-surface hover:text-theme-ink'
-                            }`}
-                        >
-                            <Gift className="h-4 w-4 shrink-0" strokeWidth={2} />
-                            FOC
-                        </button>
-
-                        <div className="my-2 border-t border-theme-border" />
-                        <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-theme-ink-muted">
-                            Money source
-                        </p>
-                        {moneySources.map((source) => {
-                            const Icon = sourceIcon(source.type);
-                            const active = String(method) === String(source.id);
-                            return (
-                                <button
-                                    key={source.id}
-                                    type="button"
-                                    onClick={() => selectMethod(String(source.id))}
-                                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition ${
-                                        active
-                                            ? 'bg-theme-primary text-[var(--color-on-primary)]'
-                                            : 'text-theme-ink-soft hover:bg-theme-surface hover:text-theme-ink'
-                                    }`}
-                                >
-                                    <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                                    <span className="truncate">{source.name}</span>
-                                </button>
-                            );
-                        })}
                     </div>
-                </aside>
+                    <div className="w-full sm:min-w-[14rem] sm:max-w-xs sm:shrink-0">
+                        <SearchableSelect
+                            size="sm"
+                            options={customerOptions}
+                            value={
+                                customerId === '' || customerId == null
+                                    ? walkInCustomerId
+                                    : String(customerId)
+                            }
+                            onChange={(v) =>
+                                onCustomerChange(
+                                    v === '' || v == null ? walkInCustomerId : String(v),
+                                )
+                            }
+                            placeholder="Walk-in"
+                        />
+                        {selectedCustomer && !selectedCustomer.is_walk_in && (
+                            <p className="mt-1 text-start text-[11px] text-theme-ink-muted sm:text-end">
+                                Balance{' '}
+                                <span
+                                    className={
+                                        Number(selectedCustomer.balance) > 0.01
+                                            ? 'font-semibold text-theme-danger'
+                                            : 'tabular-nums'
+                                    }
+                                >
+                                    {formatMoney(selectedCustomer.balance, moneyCfg)}
+                                </span>
+                            </p>
+                        )}
+                    </div>
+                </div>
 
-                <div className="flex flex-col p-4 sm:p-5">
+                <div className="grid min-h-0 flex-1 sm:min-h-[22rem] sm:grid-cols-[200px_minmax(0,1fr)]">
+                    <aside className="border-b border-theme-border bg-theme-bg/50 p-3 sm:border-b-0 sm:border-e sm:overflow-y-auto">
+                        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-theme-ink-muted">
+                            Method
+                        </p>
+                        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:block sm:space-y-1 sm:overflow-visible sm:px-0 sm:pb-0">
+                            <button
+                                type="button"
+                                onClick={() => selectMethod('credit')}
+                                disabled={!creditAvailable}
+                                title={
+                                    creditAvailable
+                                        ? 'Charge remaining / full amount on account'
+                                        : 'Select a customer to enable credit'
+                                }
+                                className={methodButtonClass(isCredit)}
+                            >
+                                <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2} />
+                                Credit
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => selectMethod('foc')}
+                                className={methodButtonClass(isFoc)}
+                            >
+                                <Gift className="h-4 w-4 shrink-0" strokeWidth={2} />
+                                FOC
+                            </button>
+
+                            <div className="my-2 hidden border-t border-theme-border sm:block" />
+                            <p className="mb-1 hidden px-1 text-[10px] font-semibold uppercase tracking-wide text-theme-ink-muted sm:block">
+                                Money source
+                            </p>
+                            {moneySources.map((source) => {
+                                const Icon = sourceIcon(source.type);
+                                const active = String(method) === String(source.id);
+                                return (
+                                    <button
+                                        key={source.id}
+                                        type="button"
+                                        onClick={() => selectMethod(String(source.id))}
+                                        className={methodButtonClass(active)}
+                                    >
+                                        <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                                        <span className="truncate">{source.name}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </aside>
+
+                    <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
                     {isFoc && (
                         <div className="mb-4 rounded-xl border border-theme-border bg-theme-bg px-4 py-6 text-center">
                             <Gift className="mx-auto mb-2 h-8 w-8 text-theme-primary" />
@@ -565,22 +564,30 @@ export default function PaymentModal({
                     </div>
 
                     {displayError && (
-                        <p className="mt-3 text-sm text-theme-danger">{displayError}</p>
+                        <p className="mt-3 text-sm text-theme-danger" role="alert">
+                            {displayError}
+                        </p>
                     )}
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-theme-border px-5 py-4">
-                <Button variant="secondary" onClick={onClose} disabled={busy}>
-                    Cancel
-                </Button>
-                <Button
-                    className="min-w-[10rem]"
-                    onClick={confirm}
-                    disabled={busy || Number(payable) < 0}
-                >
-                    {confirmLabel()}
-                </Button>
+                <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-theme-border bg-theme-surface/95 px-4 py-3 backdrop-blur sm:flex-row sm:justify-end sm:px-5 sm:py-4">
+                    <Button
+                        variant="secondary"
+                        onClick={onClose}
+                        disabled={busy}
+                        className="w-full sm:w-auto"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        className="w-full min-w-0 sm:min-w-[10rem] sm:w-auto"
+                        onClick={confirm}
+                        disabled={busy || Number(payable) < 0}
+                    >
+                        {confirmLabel()}
+                    </Button>
+                </div>
             </div>
         </Modal>
     );

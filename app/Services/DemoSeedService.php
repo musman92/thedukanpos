@@ -168,7 +168,7 @@ class DemoSeedService
         $this->markStatus($tenant, self::STATUS_RUNNING, 'Wiping and seeding demo data…', $initiatedBy);
 
         try {
-            $tenant->run(function () use ($tenant) {
+            $tenant->run(function () {
                 $this->wipeTransactionalData();
                 $this->seedDemoData();
             });
@@ -332,7 +332,18 @@ class DemoSeedService
             ?? Tax::query()->where('is_active', true)->orderBy('id')->firstOrFail();
 
         $cash = MoneySource::query()->where('code', 'cash')->firstOrFail();
-        $card = MoneySource::query()->where('code', 'card')->firstOrFail();
+        $card = MoneySource::query()->firstOrCreate(
+            ['code' => 'card'],
+            [
+                'name' => 'Card',
+                'type' => 'BANK',
+                'opening_balance' => 0,
+                'balance' => 0,
+                'is_active' => true,
+                'exclude_from_dashboard_profit' => false,
+                'is_system' => false,
+            ],
+        );
 
         foreach ([$cash, $card] as $source) {
             $source->update([

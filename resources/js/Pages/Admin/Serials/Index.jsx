@@ -20,9 +20,9 @@ export default function Index({ serials, filters, variants, branch }) {
                     e.preventDefault();
                     router.get(route('admin.serials.index'), { q }, { preserveState: true });
                 }}
-                className="mb-6 flex gap-3"
+                className="mb-6 flex flex-col gap-3 sm:flex-row"
             >
-                <TextInput className="w-64" placeholder="Search serial" value={q} onChange={(e) => setQ(e.target.value)} />
+                <TextInput className="w-full sm:w-64" placeholder="Search serial" value={q} onChange={(e) => setQ(e.target.value)} />
                 <button type="submit" className="rounded-md border border-stone-300 px-4 py-2 text-sm">Search</button>
             </form>
 
@@ -53,7 +53,7 @@ export default function Index({ serials, filters, variants, branch }) {
                 <PrimaryButton disabled={processing}>Import serials</PrimaryButton>
             </form>
 
-            <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
                 <table className="min-w-full text-left text-sm">
                     <thead className="bg-stone-50 text-stone-500">
                         <tr>

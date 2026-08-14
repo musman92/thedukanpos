@@ -40,7 +40,7 @@ export default function OwnerWithdrawal({
             <MoneySourcesShell
                 activeNav={activeNav}
                 title="Owner withdrawal"
-                description="Withdraw funds to the owner bucket. Not recorded as transactions and do not affect profit & loss."
+                description="Record money taken by the owner. It appears in transaction and money-source reports, but does not reduce sales profit."
             >
                 <form onSubmit={submit} className="mx-auto max-w-lg space-y-4">
                     {branch && (
