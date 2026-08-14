@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # DukanPOS production deploy
 #
-# Local:  build frontend assets (committed under public/build)
+# Local:  build frontend assets only when sources changed (committed under public/build)
 # Remote: git pull + landlord migrate + tenant migrate
 #
 # Usage:
-#   ./deploy.sh              # build, push if ahead, then deploy
-#   ./deploy.sh --no-push    # build + remote only (you already pushed)
-#   ./deploy.sh --skip-build # remote only (assets already built & pushed)
+#   ./deploy.sh               # smart build, push if ahead, then deploy
+#   ./deploy.sh --force-build # always rebuild assets
+#   ./deploy.sh --skip-build  # never rebuild (assets already built & pushed)
+#   ./deploy.sh --no-push     # build (if needed) + remote only
 #
 # SSH:  usman@172.236.227.235
 # Path: /var/www/app.thedukanpos.com
@@ -19,16 +20,19 @@ cd "$ROOT"
 
 SSH_HOST="${DEPLOY_SSH_HOST:-usman@172.236.227.235}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/var/www/app.thedukanpos.com}"
+BUILD_STAMP="public/build/.source-hash"
 
 DO_BUILD=1
+FORCE_BUILD=0
 DO_PUSH=1
 
 for arg in "$@"; do
   case "$arg" in
     --no-push) DO_PUSH=0 ;;
     --skip-build) DO_BUILD=0 ;;
+    --force-build) FORCE_BUILD=1 ;;
     -h|--help)
-      sed -n '2,14p' "$0"
+      sed -n '2,16p' "$0"
       exit 0
       ;;
     *)
@@ -42,6 +46,24 @@ ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m!\033[0m %s\n' "$*"; }
 die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
+# Content hash of frontend inputs. Stable if sources (and package lock) are unchanged.
+frontend_source_hash() {
+  git ls-files -- \
+    resources/js \
+    resources/css \
+    resources/views/app.blade.php \
+    vite.config.js \
+    vite.config.ts \
+    package.json \
+    package-lock.json \
+    postcss.config.js \
+    tailwind.config.js \
+    jsconfig.json \
+    | LC_ALL=C sort \
+    | git hash-object --stdin-paths \
+    | git hash-object --stdin
+}
+
 echo ""
 echo "=== DukanPOS deploy ==="
 echo "  Host:   ${SSH_HOST}"
@@ -51,16 +73,45 @@ echo ""
 command -v ssh >/dev/null || die "ssh is required"
 command -v git >/dev/null || die "git is required"
 
-# --- local build ---
-if [[ "$DO_BUILD" -eq 1 ]]; then
-  command -v npm >/dev/null || die "npm is required for build"
-  echo "Building frontend assets…"
-  npm run build
-  ok "npm run build"
-  echo ""
-else
+# --- local build (skip when sources match last build stamp) ---
+if [[ "$DO_BUILD" -eq 0 ]]; then
   warn "Skipping local build (--skip-build)"
   echo ""
+else
+  command -v npm >/dev/null || die "npm is required for build"
+
+  CURRENT_HASH="$(frontend_source_hash)"
+  PREVIOUS_HASH=""
+  if [[ -f "$BUILD_STAMP" ]]; then
+    PREVIOUS_HASH="$(tr -d '[:space:]' < "$BUILD_STAMP")"
+  fi
+
+  if [[ "$FORCE_BUILD" -eq 0 \
+     && -n "$CURRENT_HASH" \
+     && "$CURRENT_HASH" == "$PREVIOUS_HASH" \
+     && -f public/build/manifest.json ]]; then
+    ok "Frontend unchanged — skipping npm run build"
+    echo "  stamp: ${CURRENT_HASH:0:12}…"
+    echo ""
+  else
+    if [[ "$FORCE_BUILD" -eq 1 ]]; then
+      warn "Forcing rebuild (--force-build)"
+    elif [[ ! -f public/build/manifest.json ]]; then
+      warn "No public/build/manifest.json — building"
+    elif [[ -z "$PREVIOUS_HASH" ]]; then
+      warn "No build stamp yet — building"
+    else
+      warn "Frontend sources changed — building"
+    fi
+
+    echo "Building frontend assets…"
+    npm run build
+    mkdir -p "$(dirname "$BUILD_STAMP")"
+    printf '%s\n' "$CURRENT_HASH" > "$BUILD_STAMP"
+    ok "npm run build"
+    echo "  stamp: ${CURRENT_HASH:0:12}…"
+    echo ""
+  fi
 fi
 
 # Ignore local storage noise; fail if deploy-relevant files are uncommitted.
@@ -73,7 +124,7 @@ RELEVANT_DIRTY="$(
 )"
 if [[ -n "$RELEVANT_DIRTY" ]]; then
   echo "$RELEVANT_DIRTY"
-  die "Uncommitted changes above (storage/ ignored). Commit and push, then re-run ./deploy.sh"
+  die "Uncommitted changes above (storage/ ignored). Commit and push, then re-run ./deploy.sh --skip-build"
 fi
 
 # --- push local commits so remote git pull can see them ---
