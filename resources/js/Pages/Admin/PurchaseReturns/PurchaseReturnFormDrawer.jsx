@@ -1,4 +1,5 @@
 import Button from '@/Components/Ui/Button';
+import { formatAmount as money } from '@/lib/money';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import { router, useForm } from '@inertiajs/react';
@@ -6,13 +7,6 @@ import { useEffect, useMemo } from 'react';
 
 const selectClass =
     'h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function localToday() {
     const d = new Date();

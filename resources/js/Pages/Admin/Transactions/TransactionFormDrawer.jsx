@@ -1,6 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
+import { formatAmount } from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 
@@ -137,7 +138,7 @@ export default function TransactionFormDrawer({
                                 <option value="">None</option>
                                 {moneySources.map((m) => (
                                     <option key={m.id} value={m.id}>
-                                        {m.name} ({Number(m.balance).toFixed(2)})
+                                        {m.name} ({formatAmount(m.balance)})
                                     </option>
                                 ))}
                             </select>

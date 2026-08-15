@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { formatAmount } from '@/lib/money';
 import {
     ArrowLeftRight,
     HandCoins,
@@ -102,9 +103,5 @@ export function typeLabel(type) {
 }
 
 export function money(value) {
-    const n = Number(value || 0);
-    return n.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+    return formatAmount(value);
 }

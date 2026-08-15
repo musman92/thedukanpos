@@ -2,6 +2,12 @@ import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import {
+    formatAmount as money,
+    formatAmountInput,
+    formatMoney,
+    moneySymbol,
+} from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,13 +23,6 @@ const STATUSES = [
     { value: 'expired', label: 'Expired' },
     { value: 'converted', label: 'Converted' },
 ];
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function localToday() {
     const d = new Date();
@@ -138,7 +137,7 @@ export default function QuotationFormDrawer({
                 label: `${v.short_code ? `${v.short_code} — ` : ''}${v.label}`,
                 meta: [
                     v.sale_unit?.name || v.sale_unit?.code,
-                    v.sale_price != null ? `price ${v.sale_price}` : '',
+                    v.sale_price != null ? `price ${money(v.sale_price)}` : '',
                 ]
                     .filter(Boolean)
                     .join(' · '),
@@ -181,7 +180,7 @@ export default function QuotationFormDrawer({
     }, [discountInput, discountMode, subtotal, taxTotal]);
 
     useEffect(() => {
-        form.setData('discount_total', discountAmount.toFixed(2));
+        form.setData('discount_total', formatAmountInput(discountAmount));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [discountAmount]);
 
@@ -196,7 +195,7 @@ export default function QuotationFormDrawer({
         const unitId = variant.sale_unit_id || variant.purchase_unit_id;
         const suggested =
             variant.sale_price != null && Number(variant.sale_price) > 0
-                ? String(Number(variant.sale_price).toFixed(2))
+                ? formatAmountInput(variant.sale_price)
                 : '';
 
         form.setData('items', [
@@ -239,7 +238,7 @@ export default function QuotationFormDrawer({
             const pct = base > 0 ? ((Number(discountInput || 0) / base) * 100).toFixed(2) : '0';
             setDiscountInput(pct);
         } else {
-            setDiscountInput(discountAmount.toFixed(2));
+            setDiscountInput(formatAmountInput(discountAmount));
         }
         setDiscountMode(mode);
     };
@@ -253,7 +252,7 @@ export default function QuotationFormDrawer({
             quote_date: data.quote_date,
             valid_until: data.valid_until || null,
             status: data.status,
-            discount_total: discountAmount.toFixed(2),
+            discount_total: formatAmountInput(discountAmount),
             notes: data.notes,
             items: data.items.map((item) => ({
                 variant_id: item.variant_id,
@@ -425,7 +424,7 @@ export default function QuotationFormDrawer({
                                                 <td className="px-3 py-3">
                                                     <div className="relative ml-auto w-full max-w-[8.5rem]">
                                                         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                                            Rs
+                                                            {moneySymbol()}
                                                         </span>
                                                         <input
                                                             type="number"
@@ -470,7 +469,7 @@ export default function QuotationFormDrawer({
                                                 <td className="px-3 py-3">
                                                     <div className="relative ml-auto w-full max-w-[7rem]">
                                                         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                                            Rs
+                                                            {moneySymbol()}
                                                         </span>
                                                         <input
                                                             type="number"
@@ -552,13 +551,13 @@ export default function QuotationFormDrawer({
                                                 : 'text-theme-ink-muted hover:text-theme-ink'
                                         }`}
                                     >
-                                        Rs
+                                        {moneySymbol()}
                                     </button>
                                 </div>
                                 <div className="relative w-28">
                                     {discountMode === 'amount' && (
                                         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                            Rs
+                                            {moneySymbol()}
                                         </span>
                                     )}
                                     {discountMode === 'percent' && (
@@ -584,7 +583,7 @@ export default function QuotationFormDrawer({
                         </div>
                         {discountMode === 'percent' && discountAmount > 0 && (
                             <p className="text-right text-xs text-theme-ink-muted">
-                                = Rs {money(discountAmount)}
+                                = {formatMoney(discountAmount)}
                             </p>
                         )}
                         <div className="flex items-center justify-between gap-4 border-t border-theme-border pt-2 text-base font-semibold text-theme-ink">

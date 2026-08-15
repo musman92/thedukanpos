@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
@@ -17,13 +18,6 @@ function formatQty(value) {
     return n.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 4,
-    });
-}
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
     });
 }
 

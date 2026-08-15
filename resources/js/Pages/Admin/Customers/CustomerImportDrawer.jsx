@@ -69,7 +69,7 @@ export default function CustomerImportDrawer({ open, onClose, result = null }) {
                 <div className="space-y-2">
                     <p className="text-sm font-medium text-theme-ink">1. Download sample</p>
                     <p className="text-xs text-theme-ink-muted">
-                        Blank code auto-assigns C01, C02… Opening balance sets what they already owe.
+                        Blank code auto-assigns C01, C02… Opening balance may be + (they owe you) or − (advance).
                     </p>
                     <div className="flex flex-wrap gap-2">
                         <a

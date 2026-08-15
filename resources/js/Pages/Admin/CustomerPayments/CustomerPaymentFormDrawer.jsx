@@ -1,4 +1,5 @@
 import Button from '@/Components/Ui/Button';
+import { formatAmount as money, formatAmountInput } from '@/lib/money';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import { router, useForm } from '@inertiajs/react';
@@ -6,13 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 const selectClass =
     'h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function localToday() {
     const d = new Date();
@@ -164,7 +158,7 @@ export default function CustomerPaymentFormDrawer({
         unpaidSales.forEach((p) => {
             const pending = Number(p.pending_amount || 0);
             const fill = Math.min(remaining, pending);
-            next[p.id] = fill > 0 ? fill.toFixed(2) : '';
+            next[p.id] = fill > 0 ? formatAmountInput(fill) : '';
             remaining = Math.max(0, remaining - fill);
         });
         form.setData('sale_amounts', next);

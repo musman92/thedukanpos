@@ -61,14 +61,14 @@ class AccountStatementService
             if ($type === 'customer') {
                 $party = Customer::query()->find($partyId);
                 if ($party) {
-                    $partyBalance = round((float) $party->balance, 2);
+                    $partyBalance = money_round($party->balance);
                     $partyBalanceHint = 'Amount customer owes';
                     $statement = $this->customerStatement($party, $branchId, $from, $to);
                 }
             } elseif ($type === 'supplier') {
                 $party = Supplier::query()->find($partyId);
                 if ($party) {
-                    $partyBalance = round((float) $party->balance, 2);
+                    $partyBalance = money_round($party->balance);
                     $partyBalanceHint = 'Amount you owe supplier';
                     $statement = $this->supplierStatement($party, $branchId, $from, $to);
                 }
@@ -141,7 +141,7 @@ class AccountStatementService
             ->get();
 
         foreach ($sales as $sale) {
-            $total = round((float) $sale->total, 2);
+            $total = money_round($sale->total);
             if ($total <= 0) {
                 continue;
             }
@@ -162,7 +162,7 @@ class AccountStatementService
                 sortSequence: 10,
             ));
 
-            $paidAtSale = round((float) $sale->payments->sum('amount'), 2);
+            $paidAtSale = money_round($sale->payments->sum('amount'));
             if ($paidAtSale > 0) {
                 $source = $sale->payments->first()?->moneySource?->name;
                 $lines->push($this->line(
@@ -189,7 +189,7 @@ class AccountStatementService
             ->get();
 
         foreach ($payments as $payment) {
-            $applied = round((float) $payment->amount + (float) ($payment->discount_amount ?? 0), 2);
+            $applied = money_round((float) $payment->amount + (float) ($payment->discount_amount ?? 0));
             if ($applied <= 0) {
                 continue;
             }
@@ -222,7 +222,7 @@ class AccountStatementService
             ->get();
 
         foreach ($returns as $ret) {
-            $amount = round((float) $ret->total, 2);
+            $amount = money_round($ret->total);
             if ($amount <= 0) {
                 continue;
             }
@@ -249,7 +249,7 @@ class AccountStatementService
             $from,
             $to,
             'customer',
-            round((float) $customer->balance, 2),
+            money_round($customer->balance),
             Carbon::parse($customer->created_at ?? now())->startOfDay(),
         );
     }
@@ -268,7 +268,7 @@ class AccountStatementService
             ->get();
 
         foreach ($purchases as $purchase) {
-            $total = round((float) $purchase->total, 2);
+            $total = money_round($purchase->total);
             if ($total <= 0) {
                 continue;
             }
@@ -298,7 +298,7 @@ class AccountStatementService
             ->get();
 
         foreach ($payments as $payment) {
-            $amount = round((float) $payment->amount, 2);
+            $amount = money_round($payment->amount);
             if ($amount <= 0) {
                 continue;
             }
@@ -328,7 +328,7 @@ class AccountStatementService
             ->get();
 
         foreach ($returns as $ret) {
-            $amount = round((float) $ret->total, 2);
+            $amount = money_round($ret->total);
             if ($amount <= 0) {
                 continue;
             }
@@ -355,7 +355,7 @@ class AccountStatementService
             $from,
             $to,
             'supplier',
-            round((float) $supplier->balance, 2),
+            money_round($supplier->balance),
             Carbon::parse($supplier->created_at ?? now())->startOfDay(),
         );
     }
@@ -376,7 +376,7 @@ class AccountStatementService
 
         $net = 0.0;
         foreach ($payments as $payment) {
-            $amount = round((float) $payment->amount, 2);
+            $amount = money_round($payment->amount);
             if ($amount <= 0) {
                 continue;
             }
@@ -399,7 +399,7 @@ class AccountStatementService
                 moneySource: $payment->moneySource?->name,
             ));
 
-            $net = round($net - $amount, 2);
+            $net = money_round($net - $amount);
         }
 
         return $this->finalizeStatement(
@@ -425,7 +425,7 @@ class AccountStatementService
                 'value' => $c->id,
                 'label' => $c->name.($c->phone ? ' · '.$c->phone : ''),
                 'meta' => abs((float) $c->balance) >= 0.01
-                    ? 'Bal '.number_format((float) $c->balance, 2)
+                    ? 'Bal '.format_amount($c->balance)
                     : null,
             ]);
     }
@@ -443,7 +443,7 @@ class AccountStatementService
                 'value' => $s->id,
                 'label' => $s->name.($s->phone ? ' · '.$s->phone : ''),
                 'meta' => abs((float) $s->balance) >= 0.01
-                    ? 'Bal '.number_format((float) $s->balance, 2)
+                    ? 'Bal '.format_amount($s->balance)
                     : null,
             ]);
     }
@@ -492,9 +492,9 @@ class AccountStatementService
 
         $allNet = 0.0;
         foreach ($sorted as $row) {
-            $allNet = round($allNet + $this->balanceDelta($row, $partyType), 2);
+            $allNet = money_round($allNet + $this->balanceDelta($row, $partyType));
         }
-        $seed = round($partyBalance - $allNet, 2);
+        $seed = money_round($partyBalance - $allNet);
 
         $balanceBeforePeriod = $seed;
         $running = 0.0;
@@ -511,7 +511,7 @@ class AccountStatementService
             }
 
             if ($fromDate && $rowDate->lt($fromDate)) {
-                $balanceBeforePeriod = round($balanceBeforePeriod + $delta, 2);
+                $balanceBeforePeriod = money_round($balanceBeforePeriod + $delta);
 
                 continue;
             }
@@ -521,7 +521,7 @@ class AccountStatementService
                 $inPeriod = true;
             }
 
-            $running = round($running + $delta, 2);
+            $running = money_round($running + $delta);
             $row['balance'] = $running;
             $row['date_display'] = format_company_date($rowDate);
             $periodLines[] = $row;
@@ -585,8 +585,8 @@ class AccountStatementService
             'reference' => $reference,
             'url' => $url,
             'money_source' => $moneySource,
-            'debit' => round($debit, 2),
-            'credit' => round($credit, 2),
+            'debit' => money_round($debit),
+            'credit' => money_round($credit),
             'sort_at' => $sortAt,
             'sort_id' => $sortId,
             'sort_sequence' => $sortSequence,
@@ -605,9 +605,9 @@ class AccountStatementService
         $credit = (float) $row['credit'];
 
         if (in_array($partyType, ['supplier', 'employee'], true)) {
-            return round($credit - $debit, 2);
+            return money_round($credit - $debit);
         }
 
-        return round($debit - $credit, 2);
+        return money_round($debit - $credit);
     }
 }

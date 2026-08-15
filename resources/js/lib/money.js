@@ -1,3 +1,62 @@
+let defaultMoneyConfig = null;
+
+/**
+ * Keep money formatting in sync with the company settings shared by Inertia.
+ */
+export function setDefaultMoneyConfig(config) {
+    defaultMoneyConfig = config || null;
+}
+
+export function moneyDecimalPlaces(config = null) {
+    const decimals = coerceMoneyNumber(
+        config?.decimal_points ?? defaultMoneyConfig?.decimal_points,
+        2,
+    );
+
+    return decimals >= 0 && decimals <= 4 ? Math.floor(decimals) : 2;
+}
+
+/**
+ * Format an amount using the configured decimal places, without a currency symbol.
+ */
+export function formatAmount(amount, config = null) {
+    const value = coerceMoneyNumber(amount);
+    const dp = moneyDecimalPlaces(config);
+
+    return value.toLocaleString(undefined, {
+        minimumFractionDigits: dp,
+        maximumFractionDigits: dp,
+    });
+}
+
+/**
+ * Format an amount for a numeric form field (no grouping separators).
+ */
+export function formatAmountInput(amount, config = null) {
+    return coerceMoneyNumber(amount).toFixed(moneyDecimalPlaces(config));
+}
+
+/**
+ * Quantities are not money: they keep up to 4 decimals but drop trailing
+ * zeros, so whole units read as "12" rather than "12.0000".
+ */
+export function formatQuantity(quantity) {
+    const value = coerceMoneyNumber(quantity);
+
+    return value.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 4,
+    });
+}
+
+export function moneySymbol(config = null) {
+    const resolvedConfig = config || defaultMoneyConfig;
+
+    return String(
+        resolvedConfig?.currency_symbol || resolvedConfig?.currency || '',
+    ).trim();
+}
+
 /**
  * Format money using shared company settings from Inertia props.
  *
@@ -10,20 +69,14 @@
  * } | null} [config]
  */
 export function formatMoney(amount, config = null) {
-    const value = coerceMoneyNumber(amount);
-    const decimals = coerceMoneyNumber(config?.decimal_points, 2);
-    const dp = decimals >= 0 && decimals <= 6 ? Math.floor(decimals) : 2;
+    const resolvedConfig = config || defaultMoneyConfig;
+    const formatted = formatAmount(amount, resolvedConfig);
 
-    const formatted = value.toLocaleString(undefined, {
-        minimumFractionDigits: dp,
-        maximumFractionDigits: dp,
-    });
-
-    const symbol = String(config?.currency_symbol || config?.currency || '').trim();
+    const symbol = moneySymbol(resolvedConfig);
     if (!symbol) {
         return formatted;
     }
-    if (config?.currency_position === 'right') {
+    if (resolvedConfig?.currency_position === 'right') {
         return `${formatted} ${symbol}`;
     }
     return `${symbol} ${formatted}`;

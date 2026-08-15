@@ -1,7 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Modal from '@/Components/Modal';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
-import { formatMoney } from '@/lib/money';
+import { formatAmountInput, formatMoney } from '@/lib/money';
 import {
     Banknote,
     Building2,
@@ -84,7 +84,7 @@ export default function PaymentModal({
         if (!open) return;
         setMethod(cashDefault ? String(cashDefault.id) : null);
         setPayments([]);
-        setAmountInput(String(Number(totals.total || 0).toFixed(2)));
+        setAmountInput(formatAmountInput(totals.total, moneyCfg));
         setLocalError('');
     }, [open, cashDefault?.id, totals.total]);
 
@@ -95,7 +95,7 @@ export default function PaymentModal({
             return;
         }
         if (isSource) {
-            setAmountInput(String(Number(remaining > 0 ? remaining : payable).toFixed(2)));
+            setAmountInput(formatAmountInput(remaining > 0 ? remaining : payable, moneyCfg));
         }
     }, [method, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -165,7 +165,7 @@ export default function PaymentModal({
 
     const clearPayments = () => {
         setPayments([]);
-        setAmountInput(String(Number(payable).toFixed(2)));
+        setAmountInput(formatAmountInput(payable, moneyCfg));
         setLocalError('');
     };
 

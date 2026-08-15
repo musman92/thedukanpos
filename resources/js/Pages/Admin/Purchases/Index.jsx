@@ -5,16 +5,10 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import PurchaseFormDrawer from '@/Pages/Admin/Purchases/PurchaseFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount as money } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function PaymentBadge({ status }) {
     if (status === 'paid') {

@@ -1,4 +1,5 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
+import { formatAmount } from '@/lib/money';
 
 export default function Sales({ sales, summary, filters, categories = [], branch }) {
     const rows = sales?.data || [];
@@ -43,7 +44,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                         Total sale
                     </p>
                     <p className="mt-1 text-xl font-semibold tabular-nums text-theme-primary">
-                        {Number(summary.total).toFixed(2)}
+                        {formatAmount(summary.total)}
                     </p>
                 </div>
                 <div className="rounded-xl border border-theme-border bg-theme-bg px-4 py-3">
@@ -51,7 +52,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                         Paid
                     </p>
                     <p className="mt-1 text-xl font-semibold tabular-nums text-theme-ink">
-                        {Number(summary.paid ?? 0).toFixed(2)}
+                        {formatAmount(summary.paid)}
                     </p>
                 </div>
                 <div className="rounded-xl border border-theme-border bg-theme-bg px-4 py-3">
@@ -59,7 +60,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                         Discount
                     </p>
                     <p className="mt-1 text-xl font-semibold tabular-nums text-theme-ink">
-                        {Number(summary.discount ?? 0).toFixed(2)}
+                        {formatAmount(summary.discount)}
                     </p>
                 </div>
                 <div className="rounded-xl border border-theme-border bg-theme-bg px-4 py-3">
@@ -67,7 +68,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                         Tax
                     </p>
                     <p className="mt-1 text-xl font-semibold tabular-nums text-theme-ink">
-                        {Number(summary.tax).toFixed(2)}
+                        {formatAmount(summary.tax)}
                     </p>
                 </div>
             </div>
@@ -90,10 +91,10 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                                 <td className="px-4 py-2.5 text-theme-ink">{s.created_at}</td>
                                 <td className="px-4 py-2.5 text-theme-ink">{s.cashier?.name || '—'}</td>
                                 <td className="px-4 py-2.5 tabular-nums text-theme-ink">
-                                    {Number(s.total).toFixed(2)}
+                                    {formatAmount(s.total)}
                                 </td>
                                 <td className="px-4 py-2.5 tabular-nums text-theme-ink">
-                                    {Number(s.paid_total).toFixed(2)}
+                                    {formatAmount(s.paid_total)}
                                 </td>
                             </tr>
                         ))}

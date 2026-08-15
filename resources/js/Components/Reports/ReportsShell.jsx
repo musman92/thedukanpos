@@ -137,7 +137,13 @@ export default function ReportsShell({
         }
     };
 
-    const onPdf = () => window.print();
+    // The PDF is rendered server-side from the exact URL currently on screen,
+    // so the document always matches the filters the user is looking at.
+    const onPdf = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('export', 'pdf');
+        window.location.assign(url.toString());
+    };
 
     return (
         <AdminLayout title={branch?.name ? `Reports · ${branch.name}` : 'Reports'}>

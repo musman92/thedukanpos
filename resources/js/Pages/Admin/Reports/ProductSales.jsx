@@ -1,4 +1,5 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
+import { formatAmount } from '@/lib/money';
 
 export default function ProductSales({ rows = [], filters = {}, categories = [], branch }) {
     const list = Array.isArray(rows) ? rows : [];
@@ -50,7 +51,7 @@ export default function ProductSales({ rows = [], filters = {}, categories = [],
                                     {Number(row.qty).toFixed(2)}
                                 </td>
                                 <td className="px-4 py-2.5 tabular-nums text-theme-ink">
-                                    {Number(row.amount).toFixed(2)}
+                                    {formatAmount(row.amount)}
                                 </td>
                             </tr>
                         ))}

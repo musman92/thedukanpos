@@ -79,7 +79,7 @@ class SupplierService
         $this->assertNameAvailable($name);
         $this->assertCodeAvailable($code);
 
-        $opening = max(0, (float) ($data['opening_balance'] ?? 0));
+        $opening = round((float) ($data['opening_balance'] ?? 0), 4);
 
         return Supplier::query()->create([
             'name' => $name,
@@ -131,9 +131,9 @@ class SupplierService
             ]);
         }
 
-        if ((float) $supplier->balance > 0.0001) {
+        if (abs((float) $supplier->balance) > 0.0001) {
             throw ValidationException::withMessages([
-                'supplier' => 'Cannot delete this supplier while they still have a balance due.',
+                'supplier' => 'Cannot delete this supplier while they still have a non-zero balance.',
             ]);
         }
 

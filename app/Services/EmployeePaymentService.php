@@ -181,7 +181,7 @@ class EmployeePaymentService
                         '%s · %s · rem %s',
                         $item->user?->name ?: $item->user?->username ?: 'Employee',
                         $run?->number ?? 'Payslip',
-                        number_format($item->remainingAmount(), 2),
+                        format_amount($item->remainingAmount()),
                     )),
                 ];
             })

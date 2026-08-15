@@ -1,15 +1,9 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
+import { formatAmount as money } from '@/lib/money';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
 import { Link, router } from '@inertiajs/react';
 import { RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-
-function money(n) {
-    return Number(n || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 const fieldClass =
     'mt-1 block h-9 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';

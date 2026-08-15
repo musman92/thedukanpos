@@ -8,6 +8,7 @@ use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -331,13 +332,7 @@ class CustomerImportExportService
 
             $openingRaw = $data['opening_balance'] ?? null;
             $hasOpening = $openingRaw !== null && trim((string) $openingRaw) !== '';
-            $openingBalance = $hasOpening ? (float) $openingRaw : 0.0;
-            if ($hasOpening && $openingBalance < 0) {
-                $skipped++;
-                $errors[] = ['row' => $excelRow, 'message' => 'Opening balance cannot be negative.'];
-
-                continue;
-            }
+            $openingBalance = $hasOpening ? round((float) $openingRaw, 4) : 0.0;
 
             $isActive = array_key_exists('is_active', $data) && $data['is_active'] !== null && $data['is_active'] !== ''
                 ? filter_var($data['is_active'], FILTER_VALIDATE_BOOLEAN)
@@ -446,7 +441,7 @@ class CustomerImportExportService
     /**
      * @param  list<string>  $headers
      */
-    protected function writeHeaderRow(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $headers): void
+    protected function writeHeaderRow(Worksheet $sheet, array $headers): void
     {
         foreach ($headers as $columnIndex => $header) {
             $cell = $sheet->getCell([$columnIndex + 1, 1]);

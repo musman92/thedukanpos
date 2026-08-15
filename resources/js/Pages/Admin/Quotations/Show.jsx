@@ -1,14 +1,8 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Eye, Pencil } from 'lucide-react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 const STATUS_LABELS = {
     draft: 'Draft',

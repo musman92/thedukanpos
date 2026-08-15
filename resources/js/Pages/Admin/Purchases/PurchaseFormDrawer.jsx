@@ -2,19 +2,18 @@ import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import {
+    formatAmount as money,
+    formatAmountInput,
+    formatMoney,
+    moneySymbol,
+} from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { CalendarDays, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const selectClass =
     'h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function localToday() {
     const d = new Date();
@@ -140,7 +139,7 @@ export default function PurchaseFormDrawer({
                 label: `${v.short_code ? `${v.short_code} — ` : ''}${v.label}`,
                 meta: [
                     v.purchase_unit?.name || v.purchase_unit?.code,
-                    v.cost_per_unit != null ? `cost ${v.cost_per_unit}` : '',
+                    v.cost_per_unit != null ? `cost ${money(v.cost_per_unit)}` : '',
                 ]
                     .filter(Boolean)
                     .join(' · '),
@@ -166,7 +165,7 @@ export default function PurchaseFormDrawer({
     }, [discountInput, discountMode, subtotal]);
 
     useEffect(() => {
-        form.setData('discount_total', discountAmount.toFixed(2));
+        form.setData('discount_total', formatAmountInput(discountAmount));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [discountAmount]);
 
@@ -188,7 +187,7 @@ export default function PurchaseFormDrawer({
 
         const saleCost = Number(variant.cost_per_unit || 0);
         const rate = Number(variant.conversion_rate || 1) || 1;
-        const suggested = saleCost > 0 ? (saleCost * rate).toFixed(2) : '';
+        const suggested = saleCost > 0 ? formatAmountInput(saleCost * rate) : '';
 
         form.setData('items', [
             ...form.data.items,
@@ -247,7 +246,7 @@ export default function PurchaseFormDrawer({
                     : '0';
             setDiscountInput(pct);
         } else {
-            setDiscountInput(discountAmount.toFixed(2));
+            setDiscountInput(formatAmountInput(discountAmount));
         }
         setDiscountMode(mode);
     };
@@ -260,7 +259,7 @@ export default function PurchaseFormDrawer({
             supplier_id: data.supplier_id || null,
             purchase_date: data.purchase_date,
             tax_total: data.tax_total,
-            discount_total: discountAmount.toFixed(2),
+            discount_total: formatAmountInput(discountAmount),
             notes: data.notes,
             money_source_id: data.money_source_id || null,
             paid_amount: data.paid_amount === '' || data.paid_amount == null ? 0 : data.paid_amount,
@@ -436,7 +435,7 @@ export default function PurchaseFormDrawer({
                                                 <td className="px-3 py-3">
                                                     <div className="relative ml-auto w-full max-w-[8.5rem]">
                                                         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                                            Rs
+                                                            {moneySymbol()}
                                                         </span>
                                                         <input
                                                             type="number"
@@ -572,7 +571,7 @@ export default function PurchaseFormDrawer({
                                 <span className="text-theme-ink-muted">Paid</span>
                                 <div className="relative w-36">
                                     <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                        Rs
+                                        {moneySymbol()}
                                     </span>
                                     <input
                                         type="number"
@@ -596,7 +595,7 @@ export default function PurchaseFormDrawer({
                                 <span className="text-theme-ink-muted">Tax</span>
                                 <div className="relative w-36">
                                     <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                        Rs
+                                        {moneySymbol()}
                                     </span>
                                     <input
                                         type="number"
@@ -633,13 +632,13 @@ export default function PurchaseFormDrawer({
                                                     : 'text-theme-ink-muted hover:text-theme-ink'
                                             }`}
                                         >
-                                            Rs
+                                            {moneySymbol()}
                                         </button>
                                     </div>
                                     <div className="relative w-28">
                                         {discountMode === 'amount' && (
                                             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-theme-ink-muted">
-                                                Rs
+                                                {moneySymbol()}
                                             </span>
                                         )}
                                         {discountMode === 'percent' && (
@@ -665,7 +664,7 @@ export default function PurchaseFormDrawer({
                             </div>
                             {discountMode === 'percent' && discountAmount > 0 && (
                                 <p className="text-right text-xs text-theme-ink-muted">
-                                    = Rs {money(discountAmount)}
+                                    = {formatMoney(discountAmount)}
                                 </p>
                             )}
 

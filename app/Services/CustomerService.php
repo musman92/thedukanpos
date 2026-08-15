@@ -79,7 +79,7 @@ class CustomerService
         $this->assertNameAvailable($name);
         $this->assertCodeAvailable($code);
 
-        $opening = max(0, (float) ($data['opening_balance'] ?? 0));
+        $opening = round((float) ($data['opening_balance'] ?? 0), 4);
 
         return Customer::query()->create([
             'name' => $name,
@@ -144,9 +144,9 @@ class CustomerService
             ]);
         }
 
-        if ((float) $customer->balance > 0.0001) {
+        if (abs((float) $customer->balance) > 0.0001) {
             throw ValidationException::withMessages([
-                'customer' => 'Cannot delete this customer while they still have a balance due.',
+                'customer' => 'Cannot delete this customer while they still have a non-zero balance.',
             ]);
         }
 

@@ -1,12 +1,6 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
 import Pagination from '@/Components/Ui/Pagination';
-
-function money(n) {
-    return Number(n || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
+import { formatAmount as money } from '@/lib/money';
 
 export default function Foc({ sales, summary = {}, filters = {}, branch }) {
     const rows = sales?.data || [];

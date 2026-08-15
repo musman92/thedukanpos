@@ -1,15 +1,9 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
 import Pagination from '@/Components/Ui/Pagination';
+import { formatAmount as money } from '@/lib/money';
 import { Link, router } from '@inertiajs/react';
 import { Eye, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function money(n) {
-    return Number(n || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function PaymentBadge({ status }) {
     if (status === 'paid') {

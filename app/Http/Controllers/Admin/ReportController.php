@@ -6,15 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\ReportPdfService;
 use App\Support\BranchContext;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function sales(Request $request): Response
+    public function sales(Request $request): Response|HttpResponse
     {
         $branch = BranchContext::ensure();
         $from = $request->input('from', now()->startOfMonth()->toDateString());
@@ -26,6 +28,56 @@ class ReportController extends Controller
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to);
 
+        $summary = [
+            'count' => (clone $base)->count(),
+            'total' => money_round((clone $base)->sum('total')),
+            'paid' => money_round((clone $base)->sum('paid_total')),
+            'tax' => money_round((clone $base)->sum('tax_total')),
+            'discount' => money_round((clone $base)->sum('discount_total')),
+        ];
+
+        if ($request->input('export') === 'pdf') {
+            $columns = [
+                ['key' => 'number', 'label' => 'Sale'],
+                ['key' => 'created_at', 'label' => 'Date'],
+                ['key' => 'cashier_name', 'label' => 'Cashier'],
+                ['key' => 'total', 'label' => 'Total', 'format' => 'money', 'total' => true],
+                ['key' => 'paid_total', 'label' => 'Paid', 'format' => 'money', 'total' => true],
+            ];
+
+            $rows = (clone $base)
+                ->with('cashier')
+                ->latest('id')
+                ->get()
+                ->map(fn (Sale $sale) => [
+                    'number' => $sale->number,
+                    'created_at' => format_company_datetime($sale->created_at),
+                    'cashier_name' => $sale->cashier?->name ?: $sale->cashier?->username,
+                    'total' => money_round($sale->total),
+                    'paid_total' => money_round($sale->paid_total),
+                ])
+                ->all();
+
+            return app(ReportPdfService::class)->download([
+                'key' => 'sales',
+                'title' => 'Sales',
+                'meta' => ReportPdfService::periodMeta($from, $to, $branch->name),
+                'columns' => $columns,
+                'rows' => $rows,
+                'summary' => [
+                    ['label' => 'Sales', 'value' => $summary['count'], 'format' => 'int'],
+                    ['label' => 'Total', 'value' => $summary['total'], 'format' => 'money'],
+                    ['label' => 'Paid', 'value' => $summary['paid'], 'format' => 'money'],
+                    ['label' => 'Discount', 'value' => $summary['discount'], 'format' => 'money'],
+                    ['label' => 'Tax', 'value' => $summary['tax'], 'format' => 'money'],
+                ],
+                'totals' => [
+                    'total' => $summary['total'],
+                    'paid_total' => $summary['paid'],
+                ],
+            ]);
+        }
+
         $sales = (clone $base)
             ->with('cashier')
             ->latest('id')
@@ -35,20 +87,12 @@ class ReportController extends Controller
                 'id' => $sale->id,
                 'number' => $sale->number,
                 'created_at' => format_company_datetime($sale->created_at),
-                'total' => (float) $sale->total,
-                'paid_total' => (float) $sale->paid_total,
+                'total' => money_round($sale->total),
+                'paid_total' => money_round($sale->paid_total),
                 'cashier' => $sale->cashier
                     ? ['id' => $sale->cashier->id, 'name' => $sale->cashier->name ?: $sale->cashier->username]
                     : null,
             ]);
-
-        $summary = [
-            'count' => (clone $base)->count(),
-            'total' => (float) (clone $base)->sum('total'),
-            'paid' => (float) (clone $base)->sum('paid_total'),
-            'tax' => (float) (clone $base)->sum('tax_total'),
-            'discount' => (float) (clone $base)->sum('discount_total'),
-        ];
 
         return Inertia::render('Admin/Reports/Sales', [
             'sales' => $sales,
@@ -94,7 +138,7 @@ class ReportController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    public function productSales(Request $request): Response
+    public function productSales(Request $request): Response|HttpResponse
     {
         $branch = BranchContext::ensure();
         $from = $request->input('from', now()->startOfMonth()->toDateString());
@@ -115,6 +159,32 @@ class ReportController extends Controller
             ->orderByDesc('amount')
             ->limit(100)
             ->get();
+
+        if ($request->input('export') === 'pdf') {
+            $columns = [
+                ['key' => 'product', 'label' => 'Product'],
+                ['key' => 'qty', 'label' => 'Qty', 'format' => 'qty', 'total' => true],
+                ['key' => 'amount', 'label' => 'Amount', 'format' => 'money', 'total' => true],
+            ];
+
+            $pdfRows = $rows->map(fn ($row) => [
+                'product' => $row->variant?->displayName() ?? $row->product?->name,
+                'qty' => round((float) $row->qty, 4),
+                'amount' => money_round($row->amount),
+            ])->all();
+
+            return app(ReportPdfService::class)->download([
+                'key' => 'sales-by-item',
+                'title' => 'Sales by Item',
+                'meta' => ReportPdfService::periodMeta($from, $to, $branch->name),
+                'columns' => $columns,
+                'rows' => $pdfRows,
+                'totals' => [
+                    'qty' => round(array_sum(array_column($pdfRows, 'qty')), 4),
+                    'amount' => money_round(array_sum(array_column($pdfRows, 'amount'))),
+                ],
+            ]);
+        }
 
         return Inertia::render('Admin/Reports/ProductSales', [
             'rows' => $rows,

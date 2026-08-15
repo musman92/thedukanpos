@@ -300,7 +300,7 @@ class CustomerPaymentService
                 $pending = $sale->balanceDue();
                 if ($amount > $pending + 0.01) {
                     throw ValidationException::withMessages([
-                        "sale_amounts.{$saleId}" => 'Payment amount cannot exceed sale pending ('.number_format($pending, 2).'). Use total payment amount to pay opening balance or advance.',
+                        "sale_amounts.{$saleId}" => 'Payment amount cannot exceed sale pending ('.format_amount($pending).'). Use total payment amount to pay opening balance or advance.',
                     ]);
                 }
 

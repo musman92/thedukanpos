@@ -1,13 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import { Head, Link } from '@inertiajs/react';
 import { Printer } from 'lucide-react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function hasRoute(name) {
     try {

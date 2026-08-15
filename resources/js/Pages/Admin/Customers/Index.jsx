@@ -7,6 +7,7 @@ import CustomerExportMenu from '@/Pages/Admin/Customers/CustomerExportMenu';
 import CustomerFormDrawer from '@/Pages/Admin/Customers/CustomerFormDrawer';
 import CustomerImportDrawer from '@/Pages/Admin/Customers/CustomerImportDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount } from '@/lib/money';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Banknote, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -186,7 +187,7 @@ export default function Index({
                                     <td className="px-3 py-3 font-medium text-theme-ink">{customer.name}</td>
                                     <td className="px-3 py-3 text-theme-ink-soft">{customer.phone || '—'}</td>
                                     <td className={`px-3 py-3 ${Number(customer.balance) > 0 ? 'font-medium text-amber-700' : 'text-theme-ink-soft'}`}>
-                                        {Number(customer.balance).toFixed(2)}
+                                        {formatAmount(customer.balance)}
                                     </td>
                                     <td className="px-3 py-3">
                                         {customer.is_active ? (
@@ -262,9 +263,9 @@ export default function Index({
                                 {recentPayments.map((p) => (
                                     <tr key={p.id} className="border-t border-theme-border">
                                         <td className="px-3 py-2">{p.customer?.name}</td>
-                                        <td className="px-3 py-2">{Number(p.amount).toFixed(2)}</td>
+                                        <td className="px-3 py-2">{formatAmount(p.amount)}</td>
                                         <td className="px-3 py-2">{p.money_source?.name}</td>
-                                        <td className="px-3 py-2">{Number(p.balance_after).toFixed(2)}</td>
+                                        <td className="px-3 py-2">{formatAmount(p.balance_after)}</td>
                                     </tr>
                                 ))}
                             </tbody>

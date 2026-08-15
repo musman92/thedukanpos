@@ -5,16 +5,10 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import QuotationFormDrawer from '@/Pages/Admin/Quotations/QuotationFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount as money } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Download, Eye, FileText, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 const STATUS_LABELS = {
     draft: 'Draft',

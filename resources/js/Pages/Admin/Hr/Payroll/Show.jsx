@@ -1,13 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money, formatAmountInput } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import { Head, Link, router } from '@inertiajs/react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function Show({ run }) {
     const finalize = () => {
@@ -144,7 +138,7 @@ export default function Show({ run }) {
                                                             kind: 'payroll',
                                                             user_id: item.user_id,
                                                             payroll_item_id: item.id,
-                                                            amount: remaining.toFixed(2),
+                                                            amount: formatAmountInput(remaining),
                                                         },
                                                     )}
                                                     className="text-sm font-medium text-theme-primary hover:underline"

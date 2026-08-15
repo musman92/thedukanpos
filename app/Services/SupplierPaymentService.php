@@ -306,7 +306,7 @@ class SupplierPaymentService
                 $pending = $purchase->balanceDue();
                 if ($amount > $pending + 0.01) {
                     throw ValidationException::withMessages([
-                        "purchase_amounts.{$purchaseId}" => 'Payment amount cannot exceed purchase pending ('.number_format($pending, 2).'). Use total payment amount to pay opening balance or advance.',
+                        "purchase_amounts.{$purchaseId}" => 'Payment amount cannot exceed purchase pending ('.format_amount($pending).'). Use total payment amount to pay opening balance or advance.',
                     ]);
                 }
 

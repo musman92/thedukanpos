@@ -1,6 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field } from '@/Components/Ui/Input';
+import { formatAmount } from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 
@@ -136,12 +137,11 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                         <Field
                             label="Opening balance"
                             error={form.errors.opening_balance}
-                            hint="What they already owe you. Leave blank for zero."
+                            hint="+ they owe you · − advance / you owe them. Leave blank for zero."
                         >
                             <Input
                                 type="number"
                                 step="0.01"
-                                min="0"
                                 value={form.data.opening_balance}
                                 onChange={(e) => form.setData('opening_balance', e.target.value)}
                                 error={!!form.errors.opening_balance}
@@ -152,7 +152,7 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                         <p className="rounded-lg bg-theme-bg px-3 py-2 text-sm text-theme-ink-soft">
                             Current balance:{' '}
                             <span className="font-medium text-theme-ink">
-                                {Number(customer.balance || 0).toFixed(2)}
+                                {formatAmount(customer.balance)}
                             </span>
                             {' '}(use Receive payment to reduce)
                         </p>

@@ -1,16 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import PurchaseFormDrawer from '@/Pages/Admin/Purchases/PurchaseFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function PaymentBadge({ status }) {
     if (status === 'paid') {

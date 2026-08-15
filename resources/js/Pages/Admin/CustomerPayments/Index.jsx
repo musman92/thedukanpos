@@ -4,17 +4,11 @@ import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import CustomerPaymentFormDrawer from '@/Pages/Admin/CustomerPayments/CustomerPaymentFormDrawer';
+import { formatAmount as money } from '@/lib/money';
 import { confirmDelete } from '@/lib/confirm';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Plus, Pencil, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function Index({
     payments,

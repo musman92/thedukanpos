@@ -1,17 +1,11 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import Pagination from '@/Components/Ui/Pagination';
 import GeneratePayrollDrawer from '@/Pages/Admin/Hr/Payroll/GeneratePayrollDrawer';
 import { Head, Link } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 function StatusBadge({ status }) {
     if (status === 'draft') {

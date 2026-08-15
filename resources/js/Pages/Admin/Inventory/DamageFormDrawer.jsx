@@ -1,4 +1,5 @@
 import Button from '@/Components/Ui/Button';
+import { formatAmount as money, formatMoney } from '@/lib/money';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
@@ -17,13 +18,6 @@ function formatQty(value) {
     return n.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 4,
-    });
-}
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
     });
 }
 
@@ -265,7 +259,7 @@ export default function DamageFormDrawer({
                                 Estimated loss
                             </p>
                             <p className="mt-1 text-sm font-semibold tabular-nums text-theme-ink">
-                                Rs {money(estimatedLoss)}
+                                {formatMoney(estimatedLoss)}
                             </p>
                             <p className="mt-0.5 text-xs text-theme-ink-muted">
                                 At current average cost

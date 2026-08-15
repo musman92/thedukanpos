@@ -452,7 +452,7 @@ class FinanceService
             if ($salesAccount) {
                 $ledgerNotes = $data['notes'] ?? null;
                 if ($discountAmount > 0) {
-                    $discountNote = 'Includes '.number_format($discountAmount, 2).' discount/write-off';
+                    $discountNote = 'Includes '.format_amount($discountAmount).' discount/write-off';
                     $ledgerNotes = $ledgerNotes
                         ? $ledgerNotes.' ('.$discountNote.')'
                         : $discountNote;
@@ -579,7 +579,7 @@ class FinanceService
 
                 $remaining = $item->remainingAmount();
                 if ($amount > $remaining + 0.0001) {
-                    throw new \RuntimeException('Payment exceeds remaining payslip amount ('.number_format($remaining, 2).').');
+                    throw new \RuntimeException('Payment exceeds remaining payslip amount ('.format_amount($remaining).').');
                 }
             } else {
                 $payrollItemId = null;

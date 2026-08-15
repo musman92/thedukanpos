@@ -29,6 +29,27 @@ if (! function_exists('company_settings')) {
     }
 }
 
+if (! function_exists('money_decimals')) {
+    function money_decimals(): int
+    {
+        return (int) once(fn () => app(SettingService::class)->moneyConfig())['decimals'];
+    }
+}
+
+if (! function_exists('money_round')) {
+    /**
+     * Round a monetary value for display at the tenant's configured precision.
+     *
+     * Use this instead of round($value, 2) anywhere a number is being prepared
+     * for a response, export, or PDF. Persisted calculations keep their own
+     * scale and must not use this.
+     */
+    function money_round(float|int|string|null $amount): float
+    {
+        return round((float) ($amount ?? 0), money_decimals());
+    }
+}
+
 if (! function_exists('format_money')) {
     function format_money(float|int|string|null $amount, ?int $decimals = null): string
     {
@@ -45,6 +66,16 @@ if (! function_exists('format_money')) {
         }
 
         return $symbol.' '.$formatted;
+    }
+}
+
+if (! function_exists('format_amount')) {
+    function format_amount(float|int|string|null $amount, ?int $decimals = null): string
+    {
+        $config = once(fn () => app(SettingService::class)->moneyConfig());
+        $dp = $decimals ?? $config['decimals'];
+
+        return number_format((float) ($amount ?? 0), $dp, '.', ',');
     }
 }
 

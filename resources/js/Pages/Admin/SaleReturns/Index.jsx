@@ -4,16 +4,10 @@ import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import SaleReturnFormDrawer from '@/Pages/Admin/SaleReturns/SaleReturnFormDrawer';
+import { formatAmount as money } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Eye, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function Index({
     returns,

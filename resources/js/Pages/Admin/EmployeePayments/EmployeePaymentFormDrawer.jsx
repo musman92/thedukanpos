@@ -1,6 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
+import { formatAmount as money } from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 
@@ -16,13 +17,6 @@ const emptyData = (moneySources = [], prefill = {}) => ({
     payment_date: new Date().toISOString().slice(0, 10),
     notes: '',
 });
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function EmployeePaymentFormDrawer({
     open,

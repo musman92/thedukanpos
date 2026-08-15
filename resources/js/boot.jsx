@@ -6,6 +6,7 @@ import {
     syncTabBranchFromPage,
 } from './lib/branchTab';
 import { syncLocaleFromPage } from './lib/i18n';
+import { setDefaultMoneyConfig } from './lib/money';
 
 import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -16,6 +17,7 @@ installBranchTabTransport(router);
 
 router.on('navigate', (event) => {
     syncLocaleFromPage(event.detail.page?.props?.i18n);
+    setDefaultMoneyConfig(event.detail.page?.props?.company);
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'DukanPOS';
@@ -30,6 +32,7 @@ export function bootInertia(pageGlob) {
             const branch = page?.props?.branch;
             syncTabBranchFromPage(branch, router);
             syncLocaleFromPage(page?.props?.i18n);
+            setDefaultMoneyConfig(page?.props?.company);
 
             createRoot(el).render(<App {...props} />);
         },

@@ -12,7 +12,9 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\SupplierPayment;
 use App\Support\BranchContext;
+use Carbon\CarbonInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class MoneySourceTxnReportService
@@ -71,20 +73,20 @@ class MoneySourceTxnReportService
 
         $all = $all->sortByDesc(fn (array $row) => $row['sort_key'])->values();
 
-        $totalIn = round((float) $all->where('direction', 'in')->sum('amount'), 2);
-        $totalOut = round((float) $all->where('direction', 'out')->sum('amount'), 2);
+        $totalIn = money_round($all->where('direction', 'in')->sum('amount'));
+        $totalOut = money_round($all->where('direction', 'out')->sum('amount'));
 
         $bySource = $all
             ->groupBy('money_source')
             ->map(function (Collection $group, string $name) {
-                $in = round((float) $group->where('direction', 'in')->sum('amount'), 2);
-                $out = round((float) $group->where('direction', 'out')->sum('amount'), 2);
+                $in = money_round($group->where('direction', 'in')->sum('amount'));
+                $out = money_round($group->where('direction', 'out')->sum('amount'));
 
                 return [
                     'money_source' => $name,
                     'in' => $in,
                     'out' => $out,
-                    'net' => round($in - $out, 2),
+                    'net' => money_round($in - $out),
                 ];
             })
             ->sortByDesc('net')
@@ -115,10 +117,12 @@ class MoneySourceTxnReportService
                 'transactions' => $all->count(),
                 'total_in' => $totalIn,
                 'total_out' => $totalOut,
-                'net' => round($totalIn - $totalOut, 2),
+                'net' => money_round($totalIn - $totalOut),
             ],
             'by_source' => $bySource,
             'rows' => $paginator,
+            // Only materialised for PDF export; the screen uses the paginator.
+            'all_rows' => ($input['export'] ?? null) === 'pdf' ? $all->all() : [],
             'money_sources' => MoneySource::query()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -395,11 +399,11 @@ class MoneySourceTxnReportService
         int|string $id = 0,
     ): array {
         $carbon = null;
-        if ($date instanceof \Carbon\CarbonInterface) {
+        if ($date instanceof CarbonInterface) {
             $carbon = $date->copy();
         } elseif ($date) {
             try {
-                $carbon = \Illuminate\Support\Carbon::parse($date);
+                $carbon = Carbon::parse($date);
             } catch (\Throwable) {
                 $carbon = null;
             }
@@ -418,7 +422,7 @@ class MoneySourceTxnReportService
             'date_raw' => $date ? format_company_date($date) : '',
             'money_source' => $moneySource,
             'direction' => $direction,
-            'amount' => round($amount, 2),
+            'amount' => money_round($amount),
             'reference' => $reference,
             'type' => $type,
             'branch' => $branch,

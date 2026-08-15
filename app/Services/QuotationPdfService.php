@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Quotation;
 use App\Support\BranchContext;
+use App\Support\PdfBranding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 
@@ -30,39 +31,11 @@ class QuotationPdfService
             'creator:id,name',
         ]);
 
-        $company = $this->settings->all();
-        $logoSrc = $this->logoDataUri($company['logo'] ?? null)
-            ?? $this->logoDataUri($company['logo_print'] ?? null);
-
         return [
             'quotation' => $quotation,
-            'company' => [
-                'name' => $company['shop_name'] ?: (string) (tenant('name') ?? config('app.name')),
-                'address' => $company['address'] ?? '',
-                'phone' => $company['phone'] ?? '',
-                'email' => $company['email'] ?? '',
-                'tax_id' => $company['tax_id'] ?? '',
-                'logo_src' => $logoSrc,
-            ],
+            'company' => PdfBranding::company(),
             'statusLabel' => ucfirst((string) $quotation->status),
         ];
-    }
-
-    protected function logoDataUri(?string $path): ?string
-    {
-        if (! $path) {
-            return null;
-        }
-
-        $full = storage_path('app/public/'.$path);
-        if (! is_file($full)) {
-            return null;
-        }
-
-        $mime = mime_content_type($full) ?: 'image/png';
-        $data = base64_encode((string) file_get_contents($full));
-
-        return "data:{$mime};base64,{$data}";
     }
 
     public function stream(Quotation $quotation): Response

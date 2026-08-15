@@ -182,7 +182,7 @@ export default function Index() {
                 <EntityImport
                     title="Customers"
                     resultEntity="customers"
-                    columnsHint="CSV / Excel columns: name, code, phone, email, address, opening_balance, is_active. Blank code auto-assigns C01… Opening balance sets what they already owe (also accepts “balance”)."
+                    columnsHint="CSV / Excel columns: name, code, phone, email, address, opening_balance, is_active. Blank code auto-assigns C01… Opening balance may be + (they owe you) or − (advance). Also accepts “balance”."
                     sampleCsvRoute={route('admin.import-export.customers.sample', { format: 'csv' })}
                     sampleExcelRoute={route('admin.import-export.customers.sample', { format: 'xlsx' })}
                     exportCsvRoute={route('admin.import-export.customers.export', { format: 'csv' })}

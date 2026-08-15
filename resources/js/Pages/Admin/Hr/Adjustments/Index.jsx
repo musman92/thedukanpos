@@ -5,16 +5,10 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import AdjustmentFormDrawer from '@/Pages/Admin/Hr/Adjustments/AdjustmentFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount as money } from '@/lib/money';
 import { Head, router } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function Index({ adjustments, filters, employees = [] }) {
     const [showForm, setShowForm] = useState(false);

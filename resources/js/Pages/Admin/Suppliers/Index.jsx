@@ -5,6 +5,7 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import SupplierFormDrawer from '@/Pages/Admin/Suppliers/SupplierFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount } from '@/lib/money';
 import { Head, router } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -157,7 +158,7 @@ export default function Index({ suppliers, filters }) {
                                     </td>
                                     <td className="px-3 py-3 text-theme-ink-soft">{supplier.phone || '—'}</td>
                                     <td className={`px-3 py-3 ${Number(supplier.balance) > 0 ? 'font-medium text-amber-700' : 'text-theme-ink-soft'}`}>
-                                        {Number(supplier.balance).toFixed(2)}
+                                        {formatAmount(supplier.balance)}
                                     </td>
                                     <td className="px-3 py-3">
                                         {supplier.is_active ? (

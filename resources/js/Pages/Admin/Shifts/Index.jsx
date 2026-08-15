@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
@@ -7,9 +8,7 @@ import { CircleX, Eye, FileText, Plus } from 'lucide-react';
 
 function money(value) {
     if (value == null || value === '') return '—';
-    const n = Number(value);
-    const prefix = n < 0 ? '-' : '';
-    return `${prefix}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+    return formatAmount(value);
 }
 
 function StatusBadge({ status }) {

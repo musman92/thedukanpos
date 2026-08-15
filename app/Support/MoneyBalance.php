@@ -32,7 +32,7 @@ final class MoneyBalance
         }
 
         throw new \InvalidArgumentException(
-            'Insufficient balance in '.$sourceName.'. Available: '.number_format($available, 2)
+            'Insufficient balance in '.$sourceName.'. Available: '.format_amount($available)
         );
     }
 }

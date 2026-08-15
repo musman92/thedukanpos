@@ -1,14 +1,12 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import Input, { Field } from '@/Components/Ui/Input';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 function money(value) {
     if (value == null || value === '') return '—';
-    return Number(value).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+    return formatAmount(value);
 }
 
 function Cell({ label, children }) {

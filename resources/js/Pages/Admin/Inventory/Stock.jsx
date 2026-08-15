@@ -2,15 +2,20 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
+import { formatAmount as money } from '@/lib/money';
 import SortableTh from '@/Components/Ui/SortableTh';
 import { Head, Link, router } from '@inertiajs/react';
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
+function formatQty(value) {
+    const n = Number(value || 0);
+    if (Math.abs(n - Math.round(n)) < 0.0001) {
+        return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+    return n.toLocaleString(undefined, {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        maximumFractionDigits: 4,
     });
 }
 
@@ -304,7 +309,7 @@ export default function Stock({
                                                 : 'text-theme-ink'
                                         }`}
                                     >
-                                        {money(row.quantity)}
+                                        {formatQty(row.quantity)}
                                     </td>
                                     <td className="px-3 py-3 text-theme-ink-soft">
                                         {row.unit?.name || '—'}

@@ -1,16 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import PurchaseReturnFormDrawer from '@/Pages/Admin/PurchaseReturns/PurchaseReturnFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-
-function money(value) {
-    return Number(value || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
 
 export default function Show({
     return: doc,

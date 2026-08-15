@@ -1,13 +1,54 @@
 import ReportsShell from '@/Components/Reports/ReportsShell';
+import { formatAmount, formatQuantity } from '@/lib/money';
 
-function cellValue(row, key) {
-    const value = row?.[key];
-    if (value == null) return '—';
-    if (typeof value === 'number') {
-        return Number.isInteger(value) ? value : Number(value).toFixed(2);
+const MONEY_KEY_PATTERN =
+    /(^|_)(amount|balance|cash|cost|discount|margin|paid|profit|revenue|tax|taxable|total|value)($|_)/;
+
+const NUMERIC_FORMATS = ['money', 'qty', 'int'];
+
+function isMoneyKey(key) {
+    return MONEY_KEY_PATTERN.test(String(key)) && !String(key).endsWith('_pct');
+}
+
+/**
+ * Columns declare their own format server-side so the screen, the CSV export and
+ * the PDF render every value identically. Columns without a declared format fall
+ * back to guessing from the key.
+ */
+function resolveFormat(column) {
+    if (column.format) return column.format;
+
+    return isMoneyKey(column.key) ? 'money' : null;
+}
+
+function cellValue(row, column) {
+    const value = row?.[column.key];
+    if (value == null || value === '') return '—';
+
+    switch (resolveFormat(column)) {
+        case 'money':
+            return formatAmount(value);
+        case 'qty':
+            return formatQuantity(value);
+        case 'int':
+            return Number(value).toLocaleString();
+        default:
+            if (typeof value === 'object') return JSON.stringify(value);
+            if (typeof value === 'number') {
+                return Number(value).toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                });
+            }
+            return String(value);
     }
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
+}
+
+function alignClass(column) {
+    const align =
+        column.align ||
+        (NUMERIC_FORMATS.includes(resolveFormat(column)) ? 'right' : 'left');
+
+    return align === 'right' ? 'text-right tabular-nums' : 'text-left';
 }
 
 export default function Generic({
@@ -44,10 +85,8 @@ export default function Generic({
                             key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
                         const isMoney =
                             typeof value === 'number' &&
-                            (key.includes('discount') ||
-                                key.includes('total') ||
-                                key.includes('amount') ||
-                                key.includes('value'));
+                            isMoneyKey(key) &&
+                            !key.endsWith('_pct');
 
                         return (
                             <div
@@ -66,7 +105,7 @@ export default function Generic({
                                 >
                                     {typeof value === 'number'
                                         ? isMoney && key !== 'orders'
-                                            ? Number(value).toFixed(2)
+                                            ? formatAmount(value)
                                             : value
                                         : String(value)}
                                 </p>
@@ -81,7 +120,10 @@ export default function Generic({
                     <thead className="bg-theme-bg text-theme-ink-muted">
                         <tr>
                             {columns.map((col) => (
-                                <th key={col.key} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+                                <th
+                                    key={col.key}
+                                    className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${alignClass(col)}`}
+                                >
                                     {col.label}
                                 </th>
                             ))}
@@ -91,8 +133,11 @@ export default function Generic({
                         {list.map((row, idx) => (
                             <tr key={row.id ?? idx} className="border-t border-theme-border/80">
                                 {columns.map((col) => (
-                                    <td key={col.key} className="px-4 py-2.5 text-theme-ink">
-                                        {cellValue(row, col.key)}
+                                    <td
+                                        key={col.key}
+                                        className={`px-4 py-2.5 text-theme-ink ${alignClass(col)}`}
+                                    >
+                                        {cellValue(row, col)}
                                     </td>
                                 ))}
                             </tr>

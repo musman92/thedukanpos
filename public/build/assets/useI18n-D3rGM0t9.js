@@ -1,0 +1,1 @@
+import{c as e,h as o,i as a,r as c,t as l,k as i}from"./boot-BZRGitPp.js";function u(){const{i18n:t}=e().props,r=t?.locale||o(),s=t?.dir||a();return c.useMemo(()=>({t:l,locale:r,dir:s,rtl:t?.rtl??i()}),[r,s,t?.rtl])}export{u};

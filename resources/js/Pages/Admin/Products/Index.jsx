@@ -6,6 +6,7 @@ import SortableTh from '@/Components/Ui/SortableTh';
 import ProductExportMenu from '@/Pages/Admin/Products/ProductExportMenu';
 import ProductImportDrawer from '@/Pages/Admin/Products/ProductImportDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { formatAmount } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Copy, ImagePlus, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -218,7 +219,7 @@ export default function Index({ products, filters }) {
                                         {product.variants_count ?? product.variants?.length ?? 0}
                                     </td>
                                     <td className="px-3 py-3 text-theme-ink-soft">
-                                        {Number(product.sale_price || 0).toFixed(2)}
+                                        {formatAmount(product.sale_price)}
                                     </td>
                                     <td className="px-3 py-3">
                                         {product.is_active ? (
