@@ -79,6 +79,15 @@ if (! function_exists('format_amount')) {
     }
 }
 
+if (! function_exists('company_today')) {
+    function company_today(): string
+    {
+        $tz = (string) (company_settings()['timezone'] ?? config('app.timezone', 'UTC'));
+
+        return Carbon::now($tz)->toDateString();
+    }
+}
+
 if (! function_exists('format_company_date')) {
     function format_company_date(CarbonInterface|string|null $value): string
     {

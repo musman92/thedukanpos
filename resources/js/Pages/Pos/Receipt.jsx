@@ -1,5 +1,6 @@
 import { formatMoney } from '@/lib/money';
 import { Head } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 function sectionOn(sections, key) {
     return sections?.[key] !== false;
@@ -17,7 +18,22 @@ function shouldShowSubtotal(sections, sale) {
     return true;
 }
 
-export default function Receipt({ sale, tenant, branding }) {
+export default function Receipt({
+    sale,
+    tenant,
+    branding,
+    context = 'pos',
+    back_url: backUrl = null,
+    auto_print: autoPrint = false,
+}) {
+    if (!sale) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-white p-8 text-stone-600">
+                Receipt could not be loaded.
+            </div>
+        );
+    }
+
     const name = branding?.shop_name || tenant?.name;
     const sections = branding?.receipt_sections || {};
     const paperMm = Number(branding?.receipt_paper_width || 80);
@@ -36,6 +52,16 @@ export default function Receipt({ sale, tenant, branding }) {
         sectionOn(sections, 'sale_number') ||
         sectionOn(sections, 'date_cashier') ||
         (sectionOn(sections, 'customer_block') && sale.customer?.name);
+
+    useEffect(() => {
+        if (!autoPrint) {
+            return undefined;
+        }
+
+        const timer = window.setTimeout(() => window.print(), 350);
+
+        return () => window.clearTimeout(timer);
+    }, [autoPrint]);
 
     return (
         <div className="min-h-screen bg-white text-stone-900">
@@ -102,7 +128,7 @@ export default function Receipt({ sale, tenant, branding }) {
                         </thead>
                     )}
                     <tbody>
-                        {sale.items.map((item) => {
+                        {(sale.items || []).map((item) => {
                             const productName = item.product?.name || 'Item';
                             const variantName = item.variant?.name;
 
@@ -216,12 +242,21 @@ export default function Receipt({ sale, tenant, branding }) {
                     >
                         Print
                     </button>
-                    <a
-                        href="/pos"
-                        className="flex-1 rounded-md border border-stone-300 py-2 text-center"
-                    >
-                        New sale
-                    </a>
+                    {context === 'admin' && backUrl ? (
+                        <a
+                            href={backUrl}
+                            className="flex-1 rounded-md border border-stone-300 py-2 text-center"
+                        >
+                            Back to order
+                        </a>
+                    ) : (
+                        <a
+                            href="/pos"
+                            className="flex-1 rounded-md border border-stone-300 py-2 text-center"
+                        >
+                            New sale
+                        </a>
+                    )}
                 </div>
             </div>
         </div>

@@ -92,8 +92,8 @@ class DashboardMetrics
     public static function dailyRevenueSeries(int $branchId, string $startDate, string $endDate): array
     {
         $byDay = self::salesQuery($branchId, $startDate, $endDate)
-            ->selectRaw('DATE(created_at) as day, COALESCE(SUM(total), 0) as revenue')
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->selectRaw('business_date as day, COALESCE(SUM(total), 0) as revenue')
+            ->groupBy('business_date')
             ->pluck('revenue', 'day');
 
         return self::fillDailySeries($startDate, $endDate, $byDay, 'revenue');
@@ -131,8 +131,8 @@ class DashboardMetrics
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->where('sales.branch_id', $branchId)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $startDate)
-            ->whereDate('sales.created_at', '<=', $endDate)
+            ->whereDate('sales.business_date', '>=', $startDate)
+            ->whereDate('sales.business_date', '<=', $endDate)
             ->groupBy('categories.name')
             ->orderByDesc('amount')
             ->get();
@@ -193,8 +193,8 @@ class DashboardMetrics
             ->whereHas('sale', function (Builder $q) use ($branchId, $startDate, $endDate) {
                 $q->where('branch_id', $branchId)
                     ->where('status', Sale::STATUS_COMPLETED)
-                    ->whereDate('created_at', '>=', $startDate)
-                    ->whereDate('created_at', '<=', $endDate);
+                    ->whereDate('business_date', '>=', $startDate)
+                    ->whereDate('business_date', '<=', $endDate);
             })
             ->sum('amount'), 2);
 
@@ -290,8 +290,8 @@ class DashboardMetrics
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sales.branch_id', $branchId)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $startDate)
-            ->whereDate('sales.created_at', '<=', $endDate)
+            ->whereDate('sales.business_date', '>=', $startDate)
+            ->whereDate('sales.business_date', '<=', $endDate)
             ->with(['product:id,name', 'variant:id,name,product_id'])
             ->groupBy('sale_items.product_id', 'sale_items.variant_id')
             ->orderByDesc('qty')
@@ -392,8 +392,8 @@ class DashboardMetrics
         return Sale::query()
             ->where('branch_id', $branchId)
             ->where('status', Sale::STATUS_COMPLETED)
-            ->whereDate('created_at', '>=', $startDate)
-            ->whereDate('created_at', '<=', $endDate);
+            ->whereDate('business_date', '>=', $startDate)
+            ->whereDate('business_date', '<=', $endDate);
     }
 
     private static function expenseQuery(int $branchId, string $startDate, string $endDate): Builder

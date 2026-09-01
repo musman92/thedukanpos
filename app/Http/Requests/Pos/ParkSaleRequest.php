@@ -18,6 +18,7 @@ class ParkSaleRequest extends FormRequest
     {
         return [
             'customer_id' => ['nullable', 'exists:customers,id'],
+            'business_date' => ['nullable', 'date_format:Y-m-d'],
             'discount_total' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:500'],
             'is_delivery' => ['sometimes', 'boolean'],

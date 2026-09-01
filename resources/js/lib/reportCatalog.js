@@ -209,9 +209,9 @@ export const REPORT_CATALOG = [
     },
 ];
 
-export function findReport(keyOrRoute) {
+export function findReport(keyOrRoute, catalog = REPORT_CATALOG) {
     return (
-        REPORT_CATALOG.find((r) => r.key === keyOrRoute || r.route === keyOrRoute) ||
+        catalog.find((r) => r.key === keyOrRoute || r.route === keyOrRoute) ||
         null
     );
 }

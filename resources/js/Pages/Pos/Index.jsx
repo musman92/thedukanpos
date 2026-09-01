@@ -18,6 +18,7 @@ import {
     ArrowLeftRight,
     Barcode,
     Bookmark,
+    CalendarDays,
     Clock3,
     History,
     Keyboard,
@@ -194,6 +195,8 @@ export default function Index({
     tenant,
     branch,
     shift,
+    shifts_enabled: shiftsEnabled = false,
+    today_date: todayDate,
     moneySources = [],
     customers = [],
     categories = [],
@@ -219,6 +222,7 @@ export default function Index({
     );
 
     const [q, setQ] = useState('');
+    const [businessDate, setBusinessDate] = useState(todayDate || new Date().toISOString().slice(0, 10));
     const [results, setResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [categoryId, setCategoryId] = useState('all');
@@ -550,6 +554,7 @@ export default function Index({
 
     const cartPayload = () => ({
         customer_id: customerId || null,
+        business_date: businessDate,
         discount_total: Number(totals.discount || 0),
         is_delivery: isDelivery,
         delivery_charge: isDelivery ? Number(deliveryCharge || 0) : 0,
@@ -565,10 +570,6 @@ export default function Index({
     });
 
     const saveForLater = async () => {
-        if (!shift) {
-            setMessage('Open a shift before saving a bill.');
-            return;
-        }
         if (!cart.length) return;
 
         setBusy(true);
@@ -631,14 +632,14 @@ export default function Index({
     const loadTodaySales = useCallback(async () => {
         setTodayLoading(true);
         try {
-            const { data } = await axios.get(route('pos.today'));
+            const { data } = await axios.get(route('pos.today'), { params: { date: businessDate } });
             setTodaySales(data.data || []);
         } catch {
             setTodaySales([]);
         } finally {
             setTodayLoading(false);
         }
-    }, []);
+    }, [businessDate]);
 
     const openTodayHistory = useCallback(() => {
         setTodayOpen(true);
@@ -661,10 +662,6 @@ export default function Index({
     };
 
     const openPay = useCallback(() => {
-        if (!shift) {
-            setMessage('Open a shift in Admin → Shifts before selling.');
-            return;
-        }
         if (!cart.length) return;
         if (isDelivery) {
             if (!selectedCustomer || selectedCustomer.is_walk_in) {
@@ -680,7 +677,6 @@ export default function Index({
         setMessage('');
         setPayOpen(true);
     }, [
-        shift,
         cart.length,
         isDelivery,
         selectedCustomer,
@@ -695,6 +691,12 @@ export default function Index({
     openTodayHistoryRef.current = openTodayHistory;
     const clearCartRef = useRef(clearCart);
     clearCartRef.current = clearCart;
+
+    useEffect(() => {
+        if (todayOpen) {
+            loadTodaySales();
+        }
+    }, [businessDate, todayOpen, loadTodaySales]);
 
     const overlayOpen =
         payOpen ||
@@ -896,6 +898,16 @@ export default function Index({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1.5">
+                        <label className="inline-flex h-10 items-center gap-1.5 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft">
+                            <CalendarDays className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                            <input
+                                type="date"
+                                value={businessDate}
+                                onChange={(e) => setBusinessDate(e.target.value)}
+                                className="min-w-0 border-0 bg-transparent p-0 text-xs font-medium text-theme-ink outline-none"
+                                title="Business date"
+                            />
+                        </label>
                         <button
                             type="button"
                             onClick={openTodayHistory}
@@ -954,10 +966,10 @@ export default function Index({
                 </div>
             </header>
 
-            {!shift && (
+            {shiftsEnabled && !shift && (
                 <div className="flex items-center justify-between gap-3 border-b border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-sm text-[var(--color-warning)] sm:px-6">
                     <p>
-                        Open a shift before selling — cash drawer must be active.
+                        No open shift — sales will still go through; open a shift for drawer tracking.
                     </p>
                     <button
                         type="button"
@@ -967,6 +979,12 @@ export default function Index({
                         <ArrowLeftRight className="h-3.5 w-3.5" />
                         Go to Shifts
                     </button>
+                </div>
+            )}
+
+            {businessDate && todayDate && businessDate !== todayDate && (
+                <div className="border-b border-sky-500/25 bg-sky-500/10 px-4 py-2 text-sm text-theme-ink sm:px-6">
+                    Sales on this ticket count under <strong>{businessDate}</strong> in reports, not today ({todayDate}).
                 </div>
             )}
 

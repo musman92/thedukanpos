@@ -8,6 +8,7 @@ import {
     LayoutDashboard,
     LogOut,
     PanelLeft,
+    Puzzle,
     X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -28,6 +29,14 @@ const modules = [
         icon: Building2,
         href: 'platform.tenants.index',
         match: ['platform.tenants'],
+    },
+    {
+        id: 'addons',
+        type: 'link',
+        label: 'Addons',
+        icon: Puzzle,
+        href: 'platform.addons.index',
+        match: ['platform.addons'],
     },
     {
         id: 'invoices',

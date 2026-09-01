@@ -1,8 +1,9 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import PrintFormatMenu from '@/Components/PrintFormatMenu';
 import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, Eye, Pencil } from 'lucide-react';
+import { Download, Pencil } from 'lucide-react';
 
 const STATUS_LABELS = {
     draft: 'Draft',
@@ -48,15 +49,12 @@ export default function Show({ quotation, branch }) {
                     >
                         Back
                     </Link>
-                    <a
-                        href={route('admin.quotations.pdf', quotation.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-3 text-sm font-medium text-theme-ink-soft hover:bg-theme-bg"
-                    >
-                        <Eye className="h-4 w-4" />
-                        View PDF
-                    </a>
+                    <PrintFormatMenu
+                        variant="button"
+                        receiptHref={route('admin.quotations.receipt', quotation.id)}
+                        invoiceHref={route('admin.quotations.pdf', quotation.id)}
+                        invoiceLabel="Quotation (PDF)"
+                    />
                     <a
                         href={route('admin.quotations.download', quotation.id)}
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-3 text-sm font-medium text-theme-ink-soft hover:bg-theme-bg"

@@ -160,11 +160,16 @@ Route::middleware(['tenancy.session', 'auth'])->group(function () {
         Route::delete('/inventory/damages/{stockDamage}', [InventoryController::class, 'destroyDamage'])->name('inventory.damages.destroy');
 
         Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+        Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+        Route::get('/orders/{sale}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
+        Route::get('/orders/{sale}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
         Route::get('/orders/{sale}', [OrderController::class, 'show'])->name('orders.show');
 
         Route::get('/quotations', [QuotationController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationController::class, 'store'])->name('quotations.store');
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show'])->name('quotations.show');
+        Route::get('/quotations/{quotation}/receipt', [QuotationController::class, 'receipt'])->name('quotations.receipt');
         Route::get('/quotations/{quotation}/pdf', [QuotationController::class, 'pdf'])->name('quotations.pdf');
         Route::get('/quotations/{quotation}/download', [QuotationController::class, 'download'])->name('quotations.download');
         Route::put('/quotations/{quotation}', [QuotationController::class, 'update'])->name('quotations.update');
@@ -352,6 +357,9 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/invoices', [PlatformInvoiceController::class, 'index'])->name('invoices.index');
         Route::post('/invoices', [PlatformInvoiceController::class, 'store'])->name('invoices.store');
         Route::post('/invoices/{invoice}/paid', [PlatformInvoiceController::class, 'markPaid'])->name('invoices.paid');
+
+        Route::get('/addons', [\App\Http\Controllers\Platform\AddonController::class, 'index'])->name('addons.index');
+        Route::get('/addons/{addon}', [\App\Http\Controllers\Platform\AddonController::class, 'show'])->name('addons.show');
     });
 });
 

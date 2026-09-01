@@ -2,9 +2,16 @@
   "slug": "installments",
   "name": "Installments",
   "version": "0.1.0",
-  "description": "Sell on installment plans and collect scheduled payments. Features TBD.",
+  "description": "Sell on installment plans and collect scheduled payments over time — without changing how core POS works when the addon is off.",
   "requires_core": ">=1.0.0",
   "provider": "Addons\\Installments\\Providers\\InstallmentsServiceProvider",
+  "highlights": [
+    "Offer payment plans instead of full payment upfront",
+    "Track scheduled collections per customer",
+    "Addon is optional — core sales stay unchanged when inactive",
+    "Platform installs per company; tenant admin cannot self-enable",
+    "Product features (schedules, overdue, POS flow) are planned next"
+  ],
   "permissions": [
     "installments.view",
     "installments.manage"

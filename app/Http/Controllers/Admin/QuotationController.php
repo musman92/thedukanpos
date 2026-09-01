@@ -68,6 +68,17 @@ class QuotationController extends Controller
         return Inertia::render('Admin/Quotations/Show', $this->quotations->show($quotation));
     }
 
+    public function receipt(Request $request, Quotation $quotation): Response
+    {
+        $this->assertBranch($quotation);
+
+        return Inertia::render('Admin/Quotations/Receipt', [
+            ...$this->quotations->receiptPageProps($quotation),
+            'back_url' => route('admin.quotations.show', $quotation),
+            'auto_print' => $request->boolean('print'),
+        ]);
+    }
+
     public function pdf(Quotation $quotation): HttpResponse
     {
         return $this->pdfs->stream($quotation);

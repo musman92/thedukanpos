@@ -1,12 +1,14 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import PrintFormatMenu from '@/Components/PrintFormatMenu';
 import { formatAmount as money } from '@/lib/money';
 import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
-import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Monitor, Search } from 'lucide-react';
-import { useState } from 'react';
+import OrderFormDrawer from '@/Pages/Admin/Orders/OrderFormDrawer';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Monitor, Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 function hasRoute(name) {
     try {
@@ -39,7 +41,21 @@ function PaymentBadge({ status }) {
     );
 }
 
-export default function Index({ sales, filters, customers = [], branch }) {
+export default function Index({
+    sales,
+    filters,
+    customers = [],
+    variants = [],
+    money_sources: moneySources = [],
+    riders = [],
+    default_customer_id: defaultCustomerId = null,
+    today_date: todayDate = null,
+    allow_credit: allowCredit = true,
+    enable_delivery: enableDelivery = false,
+    branch,
+}) {
+    const { url } = usePage();
+    const [showForm, setShowForm] = useState(false);
     const [q, setQ] = useState(filters.q || '');
     const [localFilters, setLocalFilters] = useState({
         customer_id: filters.customer_id || '',
@@ -61,6 +77,21 @@ export default function Index({ sales, filters, customers = [], branch }) {
         payment_status: filters.payment_status || '',
         from: filters.from || '',
         to: filters.to || '',
+    };
+
+    useEffect(() => {
+        const params = new URLSearchParams(url.split('?')[1] || '');
+        if (params.get('open') === '1') {
+            setShowForm(true);
+        }
+    }, [url]);
+
+    const closeForm = () => {
+        setShowForm(false);
+        const params = new URLSearchParams(url.split('?')[1] || '');
+        if (params.get('open') === '1') {
+            router.get(route('admin.orders.index'), listQuery, { preserveState: true, replace: true });
+        }
     };
 
     const visitList = (overrides = {}) => {
@@ -85,23 +116,29 @@ export default function Index({ sales, filters, customers = [], branch }) {
             title="Orders"
             description={
                 branch?.name
-                    ? `Sales completed at POS for ${branch.name}.`
-                    : 'Sales completed at POS.'
+                    ? `Sales for ${branch.name} — from POS or back office.`
+                    : 'Completed sales from POS or back office.'
             }
             actions={
-                posAvailable ? (
-                    <a
-                        href="/pos"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            window.location.assign('/pos');
-                        }}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-primary)] transition hover:bg-[var(--color-primary-hover)]"
-                    >
-                        <Monitor className="h-4 w-4" strokeWidth={2.25} />
-                        Open POS
-                    </a>
-                ) : null
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" onClick={() => setShowForm(true)}>
+                        <Plus className="h-4 w-4" strokeWidth={2.25} />
+                        Add order
+                    </Button>
+                    {posAvailable ? (
+                        <a
+                            href="/pos"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                window.location.assign('/pos');
+                            }}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-theme-border bg-theme-surface px-4 py-2 text-sm font-semibold text-theme-ink transition hover:border-theme-primary/35"
+                        >
+                            <Monitor className="h-4 w-4" strokeWidth={2.25} />
+                            Open POS
+                        </a>
+                    ) : null}
+                </div>
             }
         >
             <Head title="Orders" />
@@ -227,7 +264,7 @@ export default function Index({ sales, filters, customers = [], branch }) {
                                         colSpan={9}
                                         className="px-3 py-10 text-center text-theme-ink-muted"
                                     >
-                                        No orders yet. Complete a sale on POS to see it here.
+                                        No orders yet. Add an order here or complete a sale on POS.
                                     </td>
                                 </tr>
                             )}
@@ -266,6 +303,10 @@ export default function Index({ sales, filters, customers = [], branch }) {
                                     </td>
                                     <td className="px-3 py-3">
                                         <div className="flex items-center justify-end gap-1">
+                                            <PrintFormatMenu
+                                                receiptHref={route('admin.orders.receipt', row.id)}
+                                                invoiceHref={route('admin.orders.invoice', row.id)}
+                                            />
                                             <Link
                                                 href={route('admin.orders.show', row.id)}
                                                 className="inline-flex rounded-lg p-2 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
@@ -283,6 +324,19 @@ export default function Index({ sales, filters, customers = [], branch }) {
 
                 <Pagination paginator={sales} />
             </div>
+
+            <OrderFormDrawer
+                open={showForm}
+                onClose={closeForm}
+                customers={customers}
+                variants={variants}
+                money_sources={moneySources}
+                riders={riders}
+                default_customer_id={defaultCustomerId}
+                today_date={todayDate}
+                allow_credit={allowCredit}
+                enable_delivery={enableDelivery}
+            />
         </AdminLayout>
     );
 }

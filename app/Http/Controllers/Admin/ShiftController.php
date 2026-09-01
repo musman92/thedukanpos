@@ -8,6 +8,7 @@ use App\Models\MoneySource;
 use App\Models\Shift;
 use App\Models\ShiftMoneySource;
 use App\Support\BranchContext;
+use App\Support\TenantAddons;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,7 @@ class ShiftController extends Controller
 {
     public function index(Request $request): Response
     {
+        $this->ensureShiftsAddon();
         $companyDefault = company_page_limit();
         $perPage = resolve_page_limit($request->input('per_page'), $companyDefault);
 
@@ -58,6 +60,7 @@ class ShiftController extends Controller
 
     public function create(): Response
     {
+        $this->ensureShiftsAddon();
         $branch = BranchContext::ensure();
 
         return Inertia::render('Admin/Shifts/Create', [
@@ -79,6 +82,7 @@ class ShiftController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->ensureShiftsAddon();
         $data = $request->validate([
             'branch_id' => ['required', 'exists:branches,id'],
             'shift_date' => ['required', 'date'],
@@ -135,6 +139,7 @@ class ShiftController extends Controller
 
     public function show(Shift $shift): Response
     {
+        $this->ensureShiftsAddon();
         $shift->load([
             'branch:id,name',
             'opener:id,name',
@@ -172,6 +177,7 @@ class ShiftController extends Controller
 
     public function close(Request $request, Shift $shift): RedirectResponse
     {
+        $this->ensureShiftsAddon();
         if (! $shift->isOpen()) {
             return back()->withErrors(['shift' => 'Shift already closed.']);
         }
@@ -211,5 +217,12 @@ class ShiftController extends Controller
         }
 
         return back()->with('status', 'Shift closed.');
+    }
+
+    private function ensureShiftsAddon(): void
+    {
+        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+            abort(404);
+        }
     }
 }

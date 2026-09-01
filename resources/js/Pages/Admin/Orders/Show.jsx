@@ -1,16 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import PrintFormatMenu from '@/Components/PrintFormatMenu';
 import { formatAmount as money } from '@/lib/money';
 import { Head, Link } from '@inertiajs/react';
-import { Printer } from 'lucide-react';
-
-function hasRoute(name) {
-    try {
-        route(name);
-        return true;
-    } catch {
-        return false;
-    }
-}
 
 function PaymentBadge({ status }) {
     if (status === 'paid') {
@@ -43,8 +34,6 @@ const DELIVERY_STATUS_LABELS = {
 };
 
 export default function Show({ sale, branch }) {
-    const receiptAvailable = hasRoute('pos.receipt');
-
     return (
         <AdminLayout
             title={sale.number}
@@ -57,16 +46,11 @@ export default function Show({ sale, branch }) {
                     >
                         Back
                     </Link>
-                    {receiptAvailable && (
-                        <Link
-                            href={route('pos.receipt', sale.id)}
-                            target="_blank"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-3 text-sm font-medium text-theme-ink-soft hover:bg-theme-bg"
-                        >
-                            <Printer className="h-4 w-4" />
-                            Print receipt
-                        </Link>
-                    )}
+                    <PrintFormatMenu
+                        variant="button"
+                        receiptHref={route('admin.orders.receipt', sale.id)}
+                        invoiceHref={route('admin.orders.invoice', sale.id)}
+                    />
                 </div>
             }
         >

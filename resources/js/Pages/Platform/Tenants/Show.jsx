@@ -288,7 +288,13 @@ export default function Show({
                                 <h2 className="text-base font-semibold text-theme-ink">Addons</h2>
                                 <p className="mt-0.5 text-sm text-theme-ink-muted">
                                     Only platform admins can install or remove addons for a company.
-                                    Tenant users cannot manage this list.
+                                    Tenant users cannot manage this list.{' '}
+                                    <Link
+                                        href={route('platform.addons.index')}
+                                        className="font-medium text-theme-primary hover:underline"
+                                    >
+                                        Browse addon catalog
+                                    </Link>
                                 </p>
                             </div>
                         </div>
@@ -309,9 +315,12 @@ export default function Show({
                                     >
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="text-sm font-semibold text-theme-ink">
+                                                <Link
+                                                    href={route('platform.addons.show', addon.slug)}
+                                                    className="text-sm font-semibold text-theme-ink hover:text-theme-primary hover:underline"
+                                                >
                                                     {addon.name}
-                                                </h3>
+                                                </Link>
                                                 <span className="font-mono text-[11px] text-theme-ink-muted">
                                                     v{addon.version}
                                                 </span>

@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import PrintFormatMenu from '@/Components/PrintFormatMenu';
 import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
@@ -7,7 +8,7 @@ import QuotationFormDrawer from '@/Pages/Admin/Quotations/QuotationFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
 import { formatAmount as money } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Download, Eye, FileText, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const STATUS_LABELS = {
@@ -313,22 +314,11 @@ export default function Index({
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Link>
-                                            <a
-                                                href={route('admin.quotations.pdf', row.id)}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex rounded-lg p-2 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
-                                                title="View PDF"
-                                            >
-                                                <FileText className="h-4 w-4" />
-                                            </a>
-                                            <a
-                                                href={route('admin.quotations.download', row.id)}
-                                                className="inline-flex rounded-lg p-2 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
-                                                title="Download PDF"
-                                            >
-                                                <Download className="h-4 w-4" />
-                                            </a>
+                                            <PrintFormatMenu
+                                                receiptHref={route('admin.quotations.receipt', row.id)}
+                                                invoiceHref={route('admin.quotations.pdf', row.id)}
+                                                invoiceLabel="Quotation (PDF)"
+                                            />
                                             {row.can_edit !== false && (
                                                 <button
                                                     type="button"

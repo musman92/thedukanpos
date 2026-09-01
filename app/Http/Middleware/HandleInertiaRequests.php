@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Shift;
 use App\Support\BranchContext;
 use App\Support\Locale;
+use App\Support\TenantAddons;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -97,7 +98,7 @@ class HandleInertiaRequests extends Middleware
                     ->get(['id', 'code', 'name']);
             },
             'openShift' => function () {
-                if (! tenancy()->initialized) {
+                if (! tenancy()->initialized || ! TenantAddons::has(TenantAddons::SHIFTS)) {
                     return null;
                 }
 
@@ -131,6 +132,7 @@ class HandleInertiaRequests extends Middleware
                     ];
                 }
             },
+            'addons' => fn () => tenancy()->initialized ? TenantAddons::flags() : [],
         ];
     }
 }

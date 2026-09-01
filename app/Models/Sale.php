@@ -44,6 +44,7 @@ class Sale extends Model
         'number',
         'branch_id',
         'shift_id',
+        'business_date',
         'customer_id',
         'cashier_id',
         'status',
@@ -63,6 +64,7 @@ class Sale extends Model
     protected function casts(): array
     {
         return [
+            'business_date' => 'date',
             'subtotal' => 'decimal:4',
             'tax_total' => 'decimal:4',
             'discount_total' => 'decimal:4',

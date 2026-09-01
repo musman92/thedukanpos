@@ -6,7 +6,7 @@
     <style>
         * { box-sizing: border-box; }
 
-        @page { margin: 104px 32px 58px 32px; }
+        @page { margin: 108px 24px 58px 24px; }
 
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -16,13 +16,14 @@
             padding: 0;
         }
 
-        /* Fixed blocks repeat on every page. */
+        /* Fixed blocks repeat on every page. Height is content-driven — do not
+           cap with a fixed pixel height or letterhead overflows the meta strip. */
         .sheet-header {
             position: fixed;
-            top: -84px;
+            top: -92px;
             left: 0;
             right: 0;
-            height: 74px;
+            padding-bottom: 8px;
             border-bottom: 2px solid #111;
         }
         .sheet-footer {
@@ -37,16 +38,24 @@
             color: #777;
         }
 
+        .report-content {
+            padding-top: 0;
+        }
+
         .head-table { width: 100%; border-collapse: collapse; }
         .head-table td { vertical-align: top; padding: 0; }
-        .logo { max-height: 42px; max-width: 120px; }
+        .brand-table { width: 100%; border-collapse: collapse; }
+        .brand-table td { vertical-align: top; padding: 0; }
+        .brand-table .logo-cell { width: 92px; padding-right: 14px !important; }
+        .brand-table .logo { max-height: 48px; max-width: 84px; display: block; margin: 0; }
         .company-name {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             text-transform: uppercase;
-            margin: 0 0 2px 0;
+            margin: 0 0 3px 0;
+            line-height: 1.2;
         }
-        .company-line { color: #555; margin: 0; font-size: 8.5px; line-height: 1.4; }
+        .company-line { color: #555; margin: 0 0 2px 0; font-size: 8.5px; line-height: 1.35; }
         .doc-title {
             font-size: 16px;
             font-weight: bold;
@@ -55,34 +64,40 @@
         }
         .doc-subtitle { font-size: 9px; color: #555; margin: 0; }
 
-        .meta-strip {
+        .stats-grid {
             width: 100%;
             border-collapse: collapse;
-            background: #f5f5f5;
-            margin-bottom: 12px;
+            table-layout: fixed;
+            margin-bottom: 14px;
         }
-        .meta-strip td {
-            padding: 6px 9px;
-            border-right: 1px solid #e0e0e0;
+        .stats-meta-row td {
+            background: #f5f5f5;
+            padding: 11px 14px;
+            border: 1px solid #e0e0e0;
             vertical-align: top;
         }
-        .meta-strip td:last-child { border-right: 0; }
+        .stats-summary-row td {
+            padding: 11px 14px;
+            border: 1px solid #ddd;
+            border-top: 0;
+            vertical-align: top;
+        }
         .meta-label {
             font-size: 7.5px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             color: #777;
-            margin: 0 0 2px 0;
+            margin: 0 0 7px 0;
+            line-height: 1.4;
         }
-        .meta-value { font-size: 9.5px; font-weight: bold; margin: 0; }
+        .meta-value {
+            font-size: 10px;
+            font-weight: bold;
+            margin: 0;
+            line-height: 1.45;
+        }
 
-        .summary { width: 100%; border-collapse: separate; border-spacing: 6px 0; margin-bottom: 12px; }
-        .summary td {
-            border: 1px solid #ddd;
-            padding: 7px 9px;
-            vertical-align: top;
-        }
-        .summary-value { font-size: 13px; font-weight: bold; margin: 2px 0 0 0; }
+        .summary-value { font-size: 13px; font-weight: bold; margin: 4px 0 0 0; line-height: 1.3; }
 
         table.data {
             width: 100%;
@@ -142,18 +157,7 @@
         <table class="head-table">
             <tr>
                 <td style="width: 58%;">
-                    @if(! empty($company['logo_src']))
-                        <img src="{{ $company['logo_src'] }}" alt="" class="logo"><br>
-                    @endif
-                    <p class="company-name">{{ $company['name'] }}</p>
-                    @if(! empty($company['address']))
-                        <p class="company-line">{{ $company['address'] }}</p>
-                    @endif
-                    <p class="company-line">
-                        @if(! empty($company['phone'])) Tel: {{ $company['phone'] }} @endif
-                        @if(! empty($company['email'])) &nbsp;·&nbsp; {{ $company['email'] }} @endif
-                        @if(! empty($company['tax_id'])) &nbsp;·&nbsp; NTN: {{ $company['tax_id'] }} @endif
-                    </p>
+                    @include('pdf.partials.company-brand', ['company' => $company])
                 </td>
                 <td style="width: 42%; text-align: right;">
                     <p class="doc-title">{{ strtoupper($title) }}</p>
@@ -175,29 +179,33 @@
         </table>
     </div>
 
-    @if(count($meta))
-        <table class="meta-strip">
-            <tr>
-                @foreach($meta as $item)
-                    <td style="width: {{ round(100 / count($meta), 4) }}%;">
-                        <p class="meta-label">{{ $item['label'] }}</p>
-                        <p class="meta-value">{{ $item['value'] }}</p>
-                    </td>
-                @endforeach
-            </tr>
-        </table>
-    @endif
-
-    @if(count($summary))
-        <table class="summary">
-            <tr>
-                @foreach($summary as $item)
-                    <td style="width: {{ round(100 / count($summary), 4) }}%;">
-                        <p class="meta-label">{{ $item['label'] }}</p>
-                        <p class="summary-value">{{ $item['value'] }}</p>
-                    </td>
-                @endforeach
-            </tr>
+    <div class="report-content">
+    @if(count($meta) || count($summary))
+        @php
+            $statsCols = max(count($meta), count($summary), 1);
+            $colWidth = round(100 / $statsCols, 4);
+        @endphp
+        <table class="stats-grid">
+            @if(count($meta))
+                <tr class="stats-meta-row">
+                    @foreach($meta as $item)
+                        <td style="width: {{ $colWidth }}%;">
+                            <p class="meta-label">{{ $item['label'] }}</p>
+                            <p class="meta-value">{{ $item['value'] }}</p>
+                        </td>
+                    @endforeach
+                </tr>
+            @endif
+            @if(count($summary))
+                <tr class="stats-summary-row">
+                    @foreach($summary as $item)
+                        <td style="width: {{ $colWidth }}%;">
+                            <p class="meta-label">{{ $item['label'] }}</p>
+                            <p class="summary-value">{{ $item['value'] }}</p>
+                        </td>
+                    @endforeach
+                </tr>
+            @endif
         </table>
     @endif
 
@@ -246,5 +254,6 @@
     @if($note)
         <p class="note">{{ $note }}</p>
     @endif
+    </div>
 </body>
 </html>

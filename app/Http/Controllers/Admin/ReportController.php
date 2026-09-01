@@ -25,8 +25,8 @@ class ReportController extends Controller
         $base = Sale::query()
             ->where('branch_id', $branch->id)
             ->where('status', Sale::STATUS_COMPLETED)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to);
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to);
 
         $summary = [
             'count' => (clone $base)->count(),
@@ -118,8 +118,8 @@ class ReportController extends Controller
                 ->with('cashier')
                 ->where('branch_id', $branch->id)
                 ->where('status', Sale::STATUS_COMPLETED)
-                ->whereDate('created_at', '>=', $from)
-                ->whereDate('created_at', '<=', $to)
+                ->whereDate('business_date', '>=', $from)
+                ->whereDate('business_date', '<=', $to)
                 ->orderBy('id')
                 ->chunk(200, function ($rows) use ($out) {
                     foreach ($rows as $sale) {
@@ -151,8 +151,8 @@ class ReportController extends Controller
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->when($categoryId, fn ($q) => $q->where('products.category_id', (int) $categoryId))
             ->with(['variant', 'product'])
             ->groupBy('sale_items.variant_id', 'sale_items.product_id')

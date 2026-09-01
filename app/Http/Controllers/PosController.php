@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\SaleService;
 use App\Services\SettingService;
 use App\Support\BranchContext;
+use App\Support\TenantAddons;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,12 +21,18 @@ use Inertia\Response;
 
 class PosController extends Controller
 {
-    public function __construct(protected SettingService $settings) {}
+    public function __construct(
+        protected SettingService $settings,
+        protected SaleService $sales,
+    ) {}
 
     public function index(SaleService $sales): Response
     {
         $branch = BranchContext::ensure();
-        $shift = Shift::query()->where('branch_id', $branch->id)->open()->latest('id')->first();
+        $shiftsEnabled = TenantAddons::has(TenantAddons::SHIFTS);
+        $shift = $shiftsEnabled
+            ? Shift::query()->where('branch_id', $branch->id)->open()->latest('id')->first()
+            : null;
         $config = $this->settings->publicConfig();
 
         return Inertia::render('Pos/Index', [
@@ -34,6 +41,8 @@ class PosController extends Controller
                 'name' => tenant('name'),
             ],
             'branch' => $branch->only(['id', 'code', 'name']),
+            'shifts_enabled' => $shiftsEnabled,
+            'today_date' => company_today(),
             'shift' => $shift,
             'parked_bills' => $sales->listParked($branch->id),
             'categories' => $this->posCategories(),
@@ -175,14 +184,11 @@ class PosController extends Controller
     public function checkout(Request $request, SaleService $sales): JsonResponse
     {
         $branch = BranchContext::ensure();
-        $shift = Shift::query()->where('branch_id', $branch->id)->open()->latest('id')->first();
-
-        if (! $shift) {
-            return response()->json(['message' => 'Open a shift before selling.'], 422);
-        }
+        $shiftId = $this->resolveOpenShiftId($branch->id);
 
         $data = $request->validate([
             'parked_sale_id' => ['nullable', 'integer', 'exists:sales,id'],
+            'business_date' => ['nullable', 'date_format:Y-m-d'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'discount_total' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
@@ -232,7 +238,8 @@ class PosController extends Controller
         try {
             $payload = [
                 'branch_id' => $branch->id,
-                'shift_id' => $shift->id,
+                'shift_id' => $shiftId,
+                'business_date' => $data['business_date'] ?? null,
                 'customer_id' => $customerId,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $isFoc ? trim(($data['notes'] ?? '').' FOC') : ($data['notes'] ?? null),
@@ -273,12 +280,16 @@ class PosController extends Controller
         ]);
     }
 
-    public function today(SaleService $sales): JsonResponse
+    public function today(Request $request, SaleService $sales): JsonResponse
     {
         $branch = BranchContext::ensure();
+        $date = $request->query('date');
 
         return response()->json([
-            'data' => $sales->listToday($branch->id),
+            'data' => $sales->listToday(
+                $branch->id,
+                is_string($date) && $date !== '' ? $date : null,
+            ),
         ]);
     }
 
@@ -377,18 +388,14 @@ class PosController extends Controller
     public function park(ParkSaleRequest $request, SaleService $sales): JsonResponse
     {
         $branch = BranchContext::ensure();
-        $shift = Shift::query()->where('branch_id', $branch->id)->open()->latest('id')->first();
-
-        if (! $shift) {
-            return response()->json(['message' => 'Open a shift before saving a bill.'], 422);
-        }
-
+        $shiftId = $this->resolveOpenShiftId($branch->id);
         $data = $request->validated();
 
         try {
             $sale = $sales->park([
                 'branch_id' => $branch->id,
-                'shift_id' => $shift->id,
+                'shift_id' => $shiftId,
+                'business_date' => $data['business_date'] ?? null,
                 'customer_id' => $data['customer_id'] ?? null,
                 'discount_total' => $data['discount_total'] ?? 0,
                 'notes' => $data['notes'] ?? null,
@@ -458,72 +465,9 @@ class PosController extends Controller
 
     public function receipt(Sale $sale): Response
     {
-        if ($sale->isParked()) {
-            abort(404);
-        }
-
-        $sale->load(['items.product', 'items.variant', 'payments.moneySource', 'branch', 'cashier', 'customer', 'rider']);
-
-        $branding = $this->settings->receiptBranding($sale->branch?->name);
-
         return Inertia::render('Pos/Receipt', [
-            'sale' => [
-                'id' => $sale->id,
-                'number' => $sale->number,
-                'created_at' => format_company_datetime($sale->created_at),
-                'subtotal' => (float) $sale->subtotal,
-                'tax_total' => (float) $sale->tax_total,
-                'discount_total' => (float) $sale->discount_total,
-                'is_delivery' => (bool) $sale->is_delivery,
-                'delivery_charge' => (float) ($sale->delivery_charge ?? 0),
-                'delivery_address' => $sale->delivery_address,
-                'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
-                'rider' => $sale->rider
-                    ? [
-                        'id' => $sale->rider->id,
-                        'name' => $sale->rider->name ?: $sale->rider->username,
-                    ]
-                    : null,
-                'total' => (float) $sale->total,
-                'paid_total' => (float) $sale->paid_total,
-                'customer' => $sale->customer
-                    ? [
-                        'id' => $sale->customer->id,
-                        'name' => $sale->customer->name,
-                        'phone' => $sale->customer->phone,
-                        'address' => $sale->customer->address,
-                    ]
-                    : null,
-                'cashier' => $sale->cashier
-                    ? ['id' => $sale->cashier->id, 'name' => $sale->cashier->name ?: $sale->cashier->username]
-                    : null,
-                'branch' => $sale->branch
-                    ? ['id' => $sale->branch->id, 'name' => $sale->branch->name]
-                    : null,
-                'items' => $sale->items->map(fn ($item) => [
-                    'id' => $item->id,
-                    'quantity' => (float) $item->quantity,
-                    'unit_price' => (float) $item->unit_price,
-                    'line_total' => (float) $item->line_total,
-                    'tax_rate' => (float) ($item->tax_rate ?? 0),
-                    'product' => $item->product ? ['name' => $item->product->name] : null,
-                    'variant' => $item->variant
-                        ? ['name' => $item->variant->name]
-                        : null,
-                ]),
-                'payments' => $sale->payments->map(fn ($p) => [
-                    'id' => $p->id,
-                    'amount' => (float) $p->amount,
-                    'money_source' => $p->moneySource
-                        ? ['name' => $p->moneySource->name]
-                        : null,
-                ]),
-            ],
-            'tenant' => [
-                'code' => tenant('code'),
-                'name' => tenant('name'),
-            ],
-            'branding' => $branding,
+            ...$this->sales->receiptPageProps($sale),
+            'context' => 'pos',
         ]);
     }
 
@@ -666,5 +610,20 @@ class PosController extends Controller
             'is_walk_in' => $customer->isWalkIn(),
             'has_address' => trim((string) ($customer->address ?? '')) !== '',
         ];
+    }
+
+    protected function resolveOpenShiftId(int $branchId): ?int
+    {
+        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+            return null;
+        }
+
+        $shift = Shift::query()
+            ->where('branch_id', $branchId)
+            ->open()
+            ->latest('id')
+            ->first();
+
+        return $shift?->id;
     }
 }

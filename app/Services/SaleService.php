@@ -9,12 +9,15 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
 use App\Models\Shift;
+use App\Models\User;
 use App\Support\BranchContext;
+use App\Support\TenantAddons;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SaleService
 {
@@ -103,6 +106,106 @@ class SaleService
     }
 
     /**
+     * Options for the admin order form drawer.
+     *
+     * @return array<string, mixed>
+     */
+    public function formOptions(): array
+    {
+        $branch = BranchContext::ensure();
+        $settings = app(SettingService::class);
+
+        return [
+            'customers' => Customer::query()
+                ->where('is_active', true)
+                ->orderByRaw('CASE WHEN UPPER(code) = ? THEN 0 ELSE 1 END', [Customer::CODE_WALK_IN])
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'balance', 'address', 'is_system', 'code'])
+                ->map(fn (Customer $customer) => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'balance' => round((float) $customer->balance, 2),
+                    'address' => $customer->address,
+                    'is_walk_in' => $customer->isWalkIn(),
+                ])
+                ->values(),
+            'variants' => ProductVariant::query()
+                ->with([
+                    'product:id,name,tax_id',
+                    'product.tax:id,name,rate,is_inclusive',
+                    'purchaseUnit:id,name,code',
+                    'saleUnit:id,name,code',
+                ])
+                ->where('is_active', true)
+                ->whereHas('product', fn ($q) => $q->where('is_active', true))
+                ->orderBy('short_code')
+                ->get()
+                ->map(fn (ProductVariant $v) => [
+                    'id' => $v->id,
+                    'label' => $v->displayName(),
+                    'short_code' => $v->short_code,
+                    'purchase_unit_id' => $v->purchase_unit_id,
+                    'sale_unit_id' => $v->sale_unit_id,
+                    'sale_price' => round((float) $v->sale_price, 4),
+                    'sale_unit' => $v->saleUnit
+                        ? ['id' => $v->saleUnit->id, 'name' => $v->saleUnit->name, 'code' => $v->saleUnit->code]
+                        : null,
+                    'tax' => $v->product?->tax
+                        ? [
+                            'id' => $v->product->tax->id,
+                            'name' => $v->product->tax->name,
+                            'rate' => (float) $v->product->tax->rate,
+                            'is_inclusive' => (bool) $v->product->tax->is_inclusive,
+                        ]
+                        : null,
+                ])
+                ->values(),
+            'money_sources' => MoneySource::query()
+                ->forPayments()
+                ->forBranch($branch->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'type'])
+                ->map(fn (MoneySource $source) => [
+                    'id' => $source->id,
+                    'name' => $source->name,
+                    'type' => $source->type,
+                ])
+                ->values(),
+            'riders' => User::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->orderBy('username')
+                ->get(['id', 'name', 'username'])
+                ->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name ?: $user->username,
+                ])
+                ->values(),
+            'default_customer_id' => Customer::walkIn()?->id,
+            'today_date' => company_today(),
+            'allow_credit' => $settings->allowPosCredit(),
+            'enable_delivery' => $settings->allowPosDelivery(),
+            'branch' => $branch->only(['id', 'name']),
+        ];
+    }
+
+    public function resolveOpenShiftId(int $branchId): ?int
+    {
+        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+            return null;
+        }
+
+        $shift = Shift::query()
+            ->where('branch_id', $branchId)
+            ->open()
+            ->latest('id')
+            ->first();
+
+        return $shift?->id;
+    }
+
+    /**
      * @return array{
      *   sale: array<string, mixed>,
      *   branch: array{id:int, name:string}
@@ -129,6 +232,84 @@ class SaleService
     }
 
     /**
+     * Receipt / print view payload (shared by POS and admin orders).
+     *
+     * @return array{
+     *   sale: array<string, mixed>,
+     *   tenant: array{code: string|null, name: string|null},
+     *   branding: array<string, mixed>
+     * }
+     */
+    public function receiptPageProps(Sale $sale): array
+    {
+        if ($sale->isParked()) {
+            abort(404);
+        }
+
+        $sale->load(['items.product', 'items.variant', 'payments.moneySource', 'branch', 'cashier', 'customer', 'rider']);
+
+        return [
+            'sale' => [
+                'id' => $sale->id,
+                'number' => $sale->number,
+                'created_at' => format_company_datetime($sale->created_at),
+                'subtotal' => (float) $sale->subtotal,
+                'tax_total' => (float) $sale->tax_total,
+                'discount_total' => (float) $sale->discount_total,
+                'is_delivery' => (bool) $sale->is_delivery,
+                'delivery_charge' => (float) ($sale->delivery_charge ?? 0),
+                'delivery_address' => $sale->delivery_address,
+                'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
+                'rider' => $sale->rider
+                    ? [
+                        'id' => $sale->rider->id,
+                        'name' => $sale->rider->name ?: $sale->rider->username,
+                    ]
+                    : null,
+                'total' => (float) $sale->total,
+                'paid_total' => (float) $sale->paid_total,
+                'customer' => $sale->customer
+                    ? [
+                        'id' => $sale->customer->id,
+                        'name' => $sale->customer->name,
+                        'phone' => $sale->customer->phone,
+                        'address' => $sale->customer->address,
+                    ]
+                    : null,
+                'cashier' => $sale->cashier
+                    ? ['id' => $sale->cashier->id, 'name' => $sale->cashier->name ?: $sale->cashier->username]
+                    : null,
+                'branch' => $sale->branch
+                    ? ['id' => $sale->branch->id, 'name' => $sale->branch->name]
+                    : null,
+                'items' => $sale->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'line_total' => (float) $item->line_total,
+                    'tax_rate' => (float) ($item->tax_rate ?? 0),
+                    'product' => $item->product ? ['name' => $item->product->name] : null,
+                    'variant' => $item->variant
+                        ? ['name' => $item->variant->name]
+                        : null,
+                ]),
+                'payments' => $sale->payments->map(fn ($p) => [
+                    'id' => $p->id,
+                    'amount' => (float) $p->amount,
+                    'money_source' => $p->moneySource
+                        ? ['name' => $p->moneySource->name]
+                        : null,
+                ]),
+            ],
+            'tenant' => [
+                'code' => tenant('code'),
+                'name' => tenant('name'),
+            ],
+            'branding' => app(SettingService::class)->receiptBranding($sale->branch?->name),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function serializeList(Sale $sale): array
@@ -141,6 +322,7 @@ class SaleService
             'number' => $sale->number,
             'created_at' => format_company_datetime($sale->created_at),
             'created_at_date' => format_company_date($sale->created_at),
+            'business_date' => $sale->business_date?->toDateString() ?? format_company_date($sale->created_at),
             'total' => round($total, 2),
             'paid_total' => round($paidTotal, 2),
             'balance_due' => round($sale->balanceDue(), 2),
@@ -222,6 +404,7 @@ class SaleService
      * @param  array{
      *   branch_id:int,
      *   shift_id?:int|null,
+     *   business_date?:string|null,
      *   customer_id?:int|null,
      *   discount_total?:float|int|string,
      *   notes?:string|null,
@@ -239,6 +422,7 @@ class SaleService
     {
         return DB::transaction(function () use ($data) {
             $this->assertOpenShift($data['shift_id'] ?? null);
+            $businessDate = $this->resolveBusinessDate($data['business_date'] ?? null);
 
             $customerId = $data['customer_id'] ?? null;
             $delivery = $this->resolveDelivery($data);
@@ -247,6 +431,7 @@ class SaleService
                 'number' => $this->nextNumber(),
                 'branch_id' => $data['branch_id'],
                 'shift_id' => $data['shift_id'] ?? null,
+                'business_date' => $businessDate,
                 'customer_id' => $customerId,
                 'cashier_id' => Auth::id(),
                 'status' => Sale::STATUS_COMPLETED,
@@ -297,6 +482,7 @@ class SaleService
      * @param  array{
      *   branch_id:int,
      *   shift_id?:int|null,
+     *   business_date?:string|null,
      *   customer_id?:int|null,
      *   discount_total?:float|int|string,
      *   notes?:string|null,
@@ -313,6 +499,7 @@ class SaleService
     {
         return DB::transaction(function () use ($data) {
             $this->assertOpenShift($data['shift_id'] ?? null);
+            $businessDate = $this->resolveBusinessDate($data['business_date'] ?? null);
 
             $delivery = $this->resolveDelivery($data);
 
@@ -320,6 +507,7 @@ class SaleService
                 'number' => $this->nextNumber(),
                 'branch_id' => $data['branch_id'],
                 'shift_id' => $data['shift_id'] ?? null,
+                'business_date' => $businessDate,
                 'customer_id' => $data['customer_id'] ?? null,
                 'cashier_id' => Auth::id(),
                 'status' => Sale::STATUS_PARKED,
@@ -433,16 +621,22 @@ class SaleService
         }
 
         return DB::transaction(function () use ($sale, $data) {
-            $this->assertOpenShift($sale->shift_id);
+            $shiftId = array_key_exists('shift_id', $data) ? ($data['shift_id'] ?? null) : $sale->shift_id;
+            $this->assertOpenShift($shiftId);
 
             $sale->items()->delete();
 
             $customerId = $data['customer_id'] ?? null;
             $delivery = $this->resolveDelivery($data);
+            $businessDate = array_key_exists('business_date', $data)
+                ? $this->resolveBusinessDate($data['business_date'])
+                : ($sale->business_date?->toDateString() ?? company_today());
 
             $sale->update([
                 'customer_id' => $customerId,
                 'cashier_id' => Auth::id(),
+                'shift_id' => $shiftId,
+                'business_date' => $businessDate,
                 'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?? null) : $sale->notes,
                 'status' => Sale::STATUS_COMPLETED,
                 ...$delivery,
@@ -506,22 +700,20 @@ class SaleService
     }
 
     /**
-     * Today's sales for the branch (company timezone), including voided.
+     * Sales for a business date (defaults to today in company timezone), including voided.
      *
      * @return list<array<string, mixed>>
      */
-    public function listToday(int $branchId): array
+    public function listToday(int $branchId, ?string $date = null): array
     {
-        $tz = (string) (company_settings()['timezone'] ?? config('app.timezone', 'UTC'));
-        $start = now($tz)->startOfDay()->utc();
-        $end = now($tz)->endOfDay()->utc();
+        $businessDate = $this->resolveBusinessDate($date);
 
         return Sale::query()
             ->with(['customer:id,name', 'cashier:id,name,username', 'rider:id,name,username'])
             ->withCount('items')
             ->where('branch_id', $branchId)
             ->where('status', '!=', Sale::STATUS_PARKED)
-            ->whereBetween('created_at', [$start, $end])
+            ->whereDate('business_date', $businessDate)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(200)
@@ -713,6 +905,22 @@ class SaleService
         if (! $shift->isOpen()) {
             throw new \RuntimeException('Shift is closed.');
         }
+    }
+
+    public function resolveBusinessDate(?string $input): string
+    {
+        if ($input === null || trim($input) === '') {
+            return company_today();
+        }
+
+        $input = trim($input);
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $input)) {
+            throw ValidationException::withMessages([
+                'business_date' => ['Enter a valid date (YYYY-MM-DD).'],
+            ]);
+        }
+
+        return $input;
     }
 
     /**

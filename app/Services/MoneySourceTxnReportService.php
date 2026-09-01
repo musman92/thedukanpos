@@ -158,17 +158,17 @@ class MoneySourceTxnReportService
     protected function salePaymentRows(int $branchId, string $from, string $to, ?int $moneySourceId): Collection
     {
         return SalePayment::query()
-            ->with(['moneySource:id,name', 'sale:id,number,branch_id,status,created_at'])
+            ->with(['moneySource:id,name', 'sale:id,number,branch_id,status,business_date,created_at'])
             ->whereHas('sale', function ($q) use ($branchId, $from, $to) {
                 $q->where('branch_id', $branchId)
                     ->where('status', Sale::STATUS_COMPLETED)
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to);
+                    ->whereDate('business_date', '>=', $from)
+                    ->whereDate('business_date', '<=', $to);
             })
             ->when($moneySourceId, fn ($q) => $q->where('money_source_id', $moneySourceId))
             ->get()
             ->map(function (SalePayment $p) {
-                $date = $p->sale?->created_at;
+                $date = $p->sale?->business_date ?? $p->sale?->created_at;
 
                 return $this->row(
                     date: $date,

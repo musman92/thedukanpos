@@ -232,16 +232,21 @@ export default function AdminLayout({
     actions = null,
     mobileFab = null,
 }) {
-    const { flash } = usePage().props;
+    const { flash, addons } = usePage().props;
     const { t } = useI18n();
     const current = route().current();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
 
+    const visibleModules = useMemo(
+        () => modules.filter((mod) => mod.id !== 'shifts' || addons?.shifts),
+        [addons?.shifts],
+    );
+
     const activeId = useMemo(() => {
-        const found = modules.find((mod) => mod.type !== 'link' && moduleMatches(current, mod));
+        const found = visibleModules.find((mod) => mod.type !== 'link' && moduleMatches(current, mod));
         return found?.id || null;
-    }, [current]);
+    }, [current, visibleModules]);
 
     const [openIds, setOpenIds] = useState(() => new Set(activeId ? [activeId] : []));
 
@@ -324,7 +329,7 @@ export default function AdminLayout({
                 </div>
 
                 <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                    {modules.map((mod) =>
+                    {visibleModules.map((mod) =>
                         mod.type === 'link' ? (
                             <NavLink key={mod.id} mod={mod} current={current} t={t} />
                         ) : (

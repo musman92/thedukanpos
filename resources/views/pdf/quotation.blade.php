@@ -20,13 +20,17 @@
         }
         .header-table { width: 100%; border-collapse: collapse; }
         .header-table td { vertical-align: top; padding: 0; }
-        .logo { max-height: 56px; max-width: 140px; }
-        .business-name {
+        .brand-table { width: 100%; border-collapse: collapse; }
+        .brand-table td { vertical-align: top; padding: 0; }
+        .brand-table .logo-cell { width: 92px; padding-right: 14px !important; }
+        .brand-table .logo { max-height: 56px; max-width: 84px; display: block; margin: 0; }
+        .company-name {
             font-size: 18px;
             font-weight: bold;
             text-transform: uppercase;
             margin: 0 0 4px 0;
         }
+        .company-line { color: #444; line-height: 1.45; margin: 0; }
         .muted { color: #444; line-height: 1.45; margin: 0; }
         .doc-title {
             font-size: 20px;
@@ -105,22 +109,7 @@
         <table class="header-table">
             <tr>
                 <td style="width: 62%;">
-                    @if(! empty($company['logo_src']))
-                        <img src="{{ $company['logo_src'] }}" alt="" class="logo"><br>
-                    @endif
-                    <p class="business-name">{{ $company['name'] }}</p>
-                    @if(! empty($company['address']))
-                        <p class="muted">{{ $company['address'] }}</p>
-                    @endif
-                    @if(! empty($company['phone']))
-                        <p class="muted">Tel: {{ $company['phone'] }}</p>
-                    @endif
-                    @if(! empty($company['email']))
-                        <p class="muted">{{ $company['email'] }}</p>
-                    @endif
-                    @if(! empty($company['tax_id']))
-                        <p class="muted">NTN: {{ $company['tax_id'] }}</p>
-                    @endif
+                    @include('pdf.partials.company-brand', ['company' => $company])
                 </td>
                 <td style="width: 38%; text-align: right;">
                     <p class="doc-title">QUOTATION</p>

@@ -1,0 +1,28 @@
+{
+  "slug": "shifts",
+  "name": "Shifts",
+  "version": "1.0.0",
+  "description": "Optional cash drawer sessions with opening/closing counts, expected vs actual cash, and Z reports for end-of-day reconciliation.",
+  "requires_core": ">=1.0.0",
+  "highlights": [
+    "Open and close cash drawer sessions per branch",
+    "Track opening float, sales, and closing counts",
+    "See cash over/short when closing a shift",
+    "Z report for shift-level sales and payment summary",
+    "POS keeps working without shifts — addon only adds drawer tracking when needed"
+  ],
+  "permissions": [
+    "shifts.index",
+    "shifts.store",
+    "shifts.update",
+    "shifts-z.view"
+  ],
+  "nav": [
+    {
+      "label": "Shifts",
+      "route": "admin.shifts.index",
+      "group": "operations",
+      "permission": "shifts.index"
+    }
+  ]
+}

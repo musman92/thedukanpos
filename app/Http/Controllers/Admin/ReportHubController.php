@@ -18,6 +18,7 @@ use App\Services\AccountStatementService;
 use App\Services\MoneySourceTxnReportService;
 use App\Services\ReportPdfService;
 use App\Support\BranchContext;
+use App\Support\TenantAddons;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -38,10 +39,10 @@ class ReportHubController extends Controller
         [$from, $to] = $this->dateRange($request);
 
         $rows = $this->completedSales($branch->id)
-            ->selectRaw('DATE(created_at) as day, COUNT(*) as count, SUM(total) as total, SUM(tax_total) as tax, SUM(discount_total) as discount, SUM(paid_total) as paid')
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->selectRaw('business_date as day, COUNT(*) as count, SUM(total) as total, SUM(tax_total) as tax, SUM(discount_total) as discount, SUM(paid_total) as paid')
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
+            ->groupBy('business_date')
             ->orderBy('day')
             ->get()
             ->map(fn ($row) => [
@@ -74,8 +75,8 @@ class ReportHubController extends Controller
             ->join('money_sources', 'money_sources.id', '=', 'sale_payments.money_source_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->groupBy('money_sources.name')
             ->orderByDesc('total')
             ->get()
@@ -145,8 +146,8 @@ class ReportHubController extends Controller
         $perPage = resolve_page_limit($request->input('per_page'), 25);
 
         $base = $this->completedSales($branch->id)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
             ->where(function ($q) {
                 $q->where('notes', 'like', '%FOC%')
                     ->orWhere(function ($q2) {
@@ -238,8 +239,8 @@ class ReportHubController extends Controller
         $base = Sale::query()
             ->where('branch_id', $branch->id)
             ->where('status', '!=', Sale::STATUS_PARKED)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
             ->when($orderNumber !== '', fn ($q) => $q->where('number', 'like', '%'.$orderNumber.'%'));
 
@@ -358,8 +359,8 @@ class ReportHubController extends Controller
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->groupBy('categories.name')
             ->orderByDesc('amount')
             ->get()
@@ -382,8 +383,8 @@ class ReportHubController extends Controller
         [$from, $to] = $this->dateRange($request);
 
         $base = $this->completedSales($branch->id)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
             ->where('discount_total', '>', 0.01);
 
         $summary = [
@@ -425,8 +426,8 @@ class ReportHubController extends Controller
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->groupBy('sale_items.tax_name')
             ->orderByDesc('tax_amount')
             ->get()
@@ -722,8 +723,8 @@ class ReportHubController extends Controller
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->when($categoryId, fn ($q) => $q->where('products.category_id', (int) $categoryId))
             ->with(['product:id,name', 'variant:id,name'])
             ->groupBy('sale_items.product_id', 'sale_items.variant_id')
@@ -765,16 +766,16 @@ class ReportHubController extends Controller
         [$from, $to] = $this->dateRange($request);
 
         $sales = (float) $this->completedSales($branch->id)
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
             ->sum('total');
 
         $cogs = (float) SaleItem::query()
             ->whereHas('sale', function ($q) use ($branch, $from, $to) {
                 $q->where('branch_id', $branch->id)
                     ->where('status', Sale::STATUS_COMPLETED)
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to);
+                    ->whereDate('business_date', '>=', $from)
+                    ->whereDate('business_date', '<=', $to);
             })
             ->selectRaw('COALESCE(SUM(quantity_in_sale_unit * cost_per_unit), 0) as cogs')
             ->value('cogs');
@@ -811,6 +812,10 @@ class ReportHubController extends Controller
 
     public function shiftsZ(Request $request): Response|HttpResponse
     {
+        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+            abort(404);
+        }
+
         $branch = BranchContext::ensure();
         [$from, $to] = $this->dateRange($request);
 
@@ -917,8 +922,8 @@ class ReportHubController extends Controller
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->where('sales.branch_id', $branch->id)
             ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.created_at', '>=', $from)
-            ->whereDate('sales.created_at', '<=', $to)
+            ->whereDate('sales.business_date', '>=', $from)
+            ->whereDate('sales.business_date', '<=', $to)
             ->when($categoryId, fn ($q) => $q->where('products.category_id', (int) $categoryId))
             ->with(['variant', 'product'])
             ->groupBy('sale_items.variant_id', 'sale_items.product_id')
@@ -946,12 +951,12 @@ class ReportHubController extends Controller
     {
         $branch = BranchContext::ensure();
         [$from, $to] = $this->dateRange($request);
-        $periodExpr = $this->periodExpression($unit, 'created_at');
+        $periodExpr = $this->periodExpression($unit, 'business_date');
 
         $rows = $this->completedSales($branch->id)
             ->selectRaw("{$periodExpr} as period, COUNT(*) as count, SUM(total) as total, SUM(tax_total) as tax, SUM(discount_total) as discount, SUM(paid_total) as paid")
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereDate('business_date', '>=', $from)
+            ->whereDate('business_date', '<=', $to)
             ->groupBy(DB::raw($periodExpr))
             ->orderBy('period')
             ->get()

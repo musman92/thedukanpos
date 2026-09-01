@@ -166,6 +166,79 @@ class QuotationService
     }
 
     /**
+     * Thermal receipt / print view payload (admin quotations).
+     *
+     * @return array{
+     *   quotation: array<string, mixed>,
+     *   tenant: array{code: string|null, name: string|null},
+     *   branding: array<string, mixed>
+     * }
+     */
+    public function receiptPageProps(Quotation $quotation): array
+    {
+        $branch = BranchContext::ensure();
+        if ((int) $quotation->branch_id !== (int) $branch->id) {
+            abort(404);
+        }
+
+        $quotation->load([
+            'items.product:id,name',
+            'items.variant:id,name,short_code',
+            'items.unit:id,name,code',
+            'customer:id,name,phone,address',
+            'branch:id,name',
+            'creator:id,name,username',
+        ]);
+
+        return [
+            'quotation' => [
+                'id' => $quotation->id,
+                'number' => $quotation->number,
+                'quote_date' => format_company_date($quotation->quote_date),
+                'valid_until' => $quotation->valid_until
+                    ? format_company_date($quotation->valid_until)
+                    : null,
+                'status' => $quotation->status,
+                'subtotal' => (float) $quotation->subtotal,
+                'tax_total' => (float) $quotation->tax_total,
+                'discount_total' => (float) $quotation->discount_total,
+                'total' => (float) $quotation->total,
+                'notes' => $quotation->notes,
+                'customer' => $quotation->customer
+                    ? [
+                        'id' => $quotation->customer->id,
+                        'name' => $quotation->customer->name,
+                        'phone' => $quotation->customer->phone,
+                        'address' => $quotation->customer->address,
+                    ]
+                    : null,
+                'creator' => $quotation->creator
+                    ? ['id' => $quotation->creator->id, 'name' => $quotation->creator->name ?: $quotation->creator->username]
+                    : null,
+                'branch' => $quotation->branch
+                    ? ['id' => $quotation->branch->id, 'name' => $quotation->branch->name]
+                    : null,
+                'items' => $quotation->items->map(fn (QuotationItem $item) => [
+                    'id' => $item->id,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'line_total' => (float) $item->line_total,
+                    'tax_rate' => (float) ($item->tax_rate ?? 0),
+                    'product' => $item->product ? ['name' => $item->product->name] : null,
+                    'variant' => $item->variant
+                        ? ['name' => $item->variant->name]
+                        : null,
+                ]),
+            ],
+            'tenant' => [
+                'code' => tenant('code'),
+                'name' => tenant('name'),
+            ],
+            'branding' => app(SettingService::class)->receiptBranding($quotation->branch?->name),
+        ];
+    }
+
+    /**
      * @param  array{
      *   customer_id?:int|null,
      *   number?:string|null,

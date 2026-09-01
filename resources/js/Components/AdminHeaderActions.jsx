@@ -233,7 +233,7 @@ function UserMenu({ user, tenant, t }) {
 }
 
 export default function AdminHeaderActions() {
-    const { auth, branch, branches, openShift, tenant } = usePage().props;
+    const { auth, branch, branches, openShift, tenant, addons } = usePage().props;
     const { t } = useI18n();
 
     useEffect(() => {
@@ -245,7 +245,7 @@ export default function AdminHeaderActions() {
     return (
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <OpenPosButton t={t} />
-            <ShiftButton openShift={openShift} t={t} />
+            {addons?.shifts ? <ShiftButton openShift={openShift} t={t} /> : null}
             <BranchDropdown branch={branch} branches={branches} />
             <div className="hidden sm:block">
                 <ThemeToggle />

@@ -146,7 +146,7 @@ class AccountStatementService
                 continue;
             }
 
-            $at = Carbon::parse($sale->created_at);
+            $at = Carbon::parse($sale->business_date ?? $sale->created_at);
             $display = $at->copy()->startOfDay();
 
             $lines->push($this->line(

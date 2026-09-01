@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { REPORT_CATALOG, findReport } from '@/lib/reportCatalog';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Download,
     FileSpreadsheet,
@@ -54,7 +54,12 @@ export default function ReportsShell({
     suppressFilters = false,
     filterBar = null,
 }) {
-    const report = findReport(activeKey) || REPORT_CATALOG[0];
+    const { addons } = usePage().props;
+    const visibleReports = useMemo(
+        () => REPORT_CATALOG.filter((item) => item.key !== 'shifts-z' || addons?.shifts),
+        [addons?.shifts],
+    );
+    const report = findReport(activeKey, visibleReports) || visibleReports[0];
     const needed = report?.filters || [];
 
     const [from, setFrom] = useState(filters.from || '');
@@ -194,7 +199,7 @@ export default function ReportsShell({
                 </div>
 
                 <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto border-b border-theme-border px-3 py-3 sm:flex-wrap sm:overflow-visible sm:px-5 sm:py-4 print:hidden">
-                    {REPORT_CATALOG.map((item) => {
+                    {visibleReports.map((item) => {
                         const Icon = item.icon;
                         const active = item.key === report.key;
                         return (
