@@ -9,6 +9,8 @@ use App\Models\Tenant;
 use App\Services\AddonProvisionService;
 use App\Services\DemoSeedService;
 use App\Services\SettingService;
+use App\Services\TenantBackupService;
+use App\Services\TenantResetService;
 use App\Support\PageLimit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -84,6 +86,8 @@ class TenantController extends Controller
             'tenant' => $this->tenantPayload($tenant),
             'demo_seed' => app(DemoSeedService::class)->status($tenant),
             'addons' => app(AddonProvisionService::class)->statusForTenant($tenant),
+            'reset_groups' => app(TenantResetService::class)->groupsForUi(),
+            'backups' => app(TenantBackupService::class)->list($tenant),
             'form_meta' => $this->formMeta(),
             'auth' => [
                 'user' => Auth::guard('platform')->user()?->only(['id', 'name', 'email']),
@@ -318,6 +322,114 @@ class TenantController extends Controller
         return back()->with(
             'status',
             'Demo seed started. Keep this page open a moment, then refresh — status should move to running, then completed (can take a few minutes).',
+        );
+    }
+
+    public function resetData(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $data = $request->validate([
+            'groups' => ['required', 'array', 'min:1'],
+            'groups.*' => ['required', 'string'],
+            'confirm_code' => ['required', 'string'],
+        ]);
+
+        if (strtolower(trim($data['confirm_code'])) !== strtolower($tenant->code)) {
+            throw ValidationException::withMessages([
+                'confirm_code' => 'Confirmation code does not match the company slug.',
+            ]);
+        }
+
+        try {
+            $result = app(TenantResetService::class)->reset($tenant, $data['groups']);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['tenant' => $e->getMessage()]);
+        }
+
+        $count = count($result['groups']);
+
+        return back()->with(
+            'status',
+            "Reset complete for {$tenant->code}: {$count} area(s) cleared. The company can start fresh with the remaining setup.",
+        );
+    }
+
+    public function storeBackup(Tenant $tenant): RedirectResponse
+    {
+        try {
+            $backup = app(TenantBackupService::class)->create($tenant);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['backup' => $e->getMessage()]);
+        }
+
+        return back()->with(
+            'status',
+            "Backup created: {$backup['file']} ({$backup['size_label']}).",
+        );
+    }
+
+    public function downloadBackup(Tenant $tenant, string $file)
+    {
+        try {
+            return app(TenantBackupService::class)->download($tenant, $file);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['backup' => $e->getMessage()]);
+        }
+    }
+
+    public function restoreBackup(Request $request, Tenant $tenant, string $file): RedirectResponse
+    {
+        $data = $request->validate([
+            'confirm_code' => ['required', 'string'],
+        ]);
+
+        if (strtolower(trim($data['confirm_code'])) !== strtolower($tenant->code)) {
+            throw ValidationException::withMessages([
+                'confirm_code' => 'Confirmation code does not match the company slug.',
+            ]);
+        }
+
+        try {
+            app(TenantBackupService::class)->restore($tenant, $file);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['backup' => $e->getMessage()]);
+        }
+
+        return back()->with(
+            'status',
+            "Database restored for {$tenant->code} from {$file}.",
+        );
+    }
+
+    public function restoreBackupUpload(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $data = $request->validate([
+            'confirm_code' => ['required', 'string'],
+            'backup' => ['required', 'file', 'max:512000'],
+        ]);
+
+        if (strtolower(trim($data['confirm_code'])) !== strtolower($tenant->code)) {
+            throw ValidationException::withMessages([
+                'confirm_code' => 'Confirmation code does not match the company slug.',
+            ]);
+        }
+
+        try {
+            app(TenantBackupService::class)->restoreUpload($tenant, $data['backup']);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['backup' => $e->getMessage()]);
+        }
+
+        return back()->with(
+            'status',
+            "Database restored for {$tenant->code} from uploaded backup.",
         );
     }
 

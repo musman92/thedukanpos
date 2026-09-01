@@ -351,6 +351,15 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::put('/tenants/{tenant}/billing', [TenantController::class, 'updateBilling'])->name('tenants.billing');
         Route::post('/tenants/{tenant}/support-login', [TenantController::class, 'createSupportLogin'])->name('tenants.support-login');
         Route::post('/tenants/{tenant}/seed-demo', [TenantController::class, 'seedDemo'])->name('tenants.seed-demo');
+        Route::post('/tenants/{tenant}/reset-data', [TenantController::class, 'resetData'])->name('tenants.reset-data');
+        Route::post('/tenants/{tenant}/backups', [TenantController::class, 'storeBackup'])->name('tenants.backups.store');
+        Route::get('/tenants/{tenant}/backups/{file}', [TenantController::class, 'downloadBackup'])
+            ->where('file', '.*')
+            ->name('tenants.backups.download');
+        Route::post('/tenants/{tenant}/backups/{file}/restore', [TenantController::class, 'restoreBackup'])
+            ->where('file', '.*')
+            ->name('tenants.backups.restore');
+        Route::post('/tenants/{tenant}/backups-restore-upload', [TenantController::class, 'restoreBackupUpload'])->name('tenants.backups.restore-upload');
         Route::post('/tenants/{tenant}/addons/{addon}/install', [TenantController::class, 'installAddon'])->name('tenants.addons.install');
         Route::delete('/tenants/{tenant}/addons/{addon}', [TenantController::class, 'removeAddon'])->name('tenants.addons.remove');
 

@@ -1,8 +1,10 @@
 import PlatformLayout from '@/Layouts/PlatformLayout';
 import Button from '@/Components/Ui/Button';
+import TenantBackupsPanel from '@/Pages/Platform/Tenants/TenantBackupsPanel';
 import TenantFormDrawer from '@/Pages/Platform/Tenants/TenantFormDrawer';
+import TenantResetDrawer from '@/Pages/Platform/Tenants/TenantResetDrawer';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Database, Pencil, Puzzle } from 'lucide-react';
+import { ArrowLeft, Database, Pencil, Puzzle, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 function Info({ label, children }) {
@@ -35,6 +37,7 @@ function seedTone(status) {
 
 const TABS = [
     { id: 'overview', label: 'Overview' },
+    { id: 'backups', label: 'Backups' },
     { id: 'addons', label: 'Addons' },
 ];
 
@@ -43,8 +46,11 @@ export default function Show({
     form_meta: formMeta = {},
     demo_seed: demoSeed = {},
     addons = [],
+    reset_groups: resetGroups = [],
+    backups = [],
 }) {
     const [editing, setEditing] = useState(false);
+    const [resetOpen, setResetOpen] = useState(false);
     const [tab, setTab] = useState('overview');
     const [busySlug, setBusySlug] = useState(null);
     const { errors, flash } = usePage().props;
@@ -126,6 +132,14 @@ export default function Show({
                     <Button
                         variant="secondary"
                         disabled={!tenant.is_active}
+                        onClick={() => setResetOpen(true)}
+                    >
+                        <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
+                        Reset data
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        disabled={!tenant.is_active}
                         onClick={() =>
                             router.post(route('platform.tenants.support-login', tenant.id), {}, {
                                 preserveScroll: true,
@@ -146,9 +160,9 @@ export default function Show({
         >
             <Head title={`Platform · ${tenant.name}`} />
 
-            {(errors?.tenant || errors?.addon || flash?.error) && (
+            {(errors?.tenant || errors?.addon || errors?.backup || flash?.error) && (
                 <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                    {errors?.tenant || errors?.addon || flash?.error}
+                    {errors?.tenant || errors?.addon || errors?.backup || flash?.error}
                 </div>
             )}
 
@@ -216,6 +230,11 @@ export default function Show({
                                 ({installedCount}/{addons.length})
                             </span>
                         )}
+                        {item.id === 'backups' && backups.length > 0 && (
+                            <span className="ms-1.5 text-xs font-normal text-theme-ink-muted">
+                                ({backups.length})
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -275,6 +294,10 @@ export default function Show({
                         </dl>
                     </div>
                 </>
+            )}
+
+            {tab === 'backups' && (
+                <TenantBackupsPanel tenant={tenant} backups={backups} />
             )}
 
             {tab === 'addons' && (
@@ -374,6 +397,13 @@ export default function Show({
                 tenant={tenant}
                 formMeta={formMeta}
                 onClose={() => setEditing(false)}
+            />
+
+            <TenantResetDrawer
+                open={resetOpen}
+                tenant={tenant}
+                resetGroups={resetGroups}
+                onClose={() => setResetOpen(false)}
             />
         </PlatformLayout>
     );
