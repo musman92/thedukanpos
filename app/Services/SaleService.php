@@ -336,6 +336,10 @@ class SaleService
                     'name' => $sale->cashier->name ?: $sale->cashier->username,
                 ]
                 : null,
+            'status' => $sale->status,
+            'is_void' => $sale->status === Sale::STATUS_VOID,
+            'can_delete' => $sale->status === Sale::STATUS_COMPLETED,
+            'can_edit' => $sale->status === Sale::STATUS_COMPLETED,
             'is_delivery' => (bool) $sale->is_delivery,
             'delivery_status' => $sale->is_delivery ? ($sale->delivery_status ?: Sale::DELIVERY_PENDING) : null,
             'rider' => $sale->rider
@@ -352,8 +356,12 @@ class SaleService
      */
     public function serializeDetail(Sale $sale): array
     {
+        $sale->loadMissing('returns:id');
+
         return [
             ...$this->serializeList($sale),
+            'can_delete' => $sale->status === Sale::STATUS_COMPLETED && $sale->returns->isEmpty(),
+            'can_edit' => $sale->status === Sale::STATUS_COMPLETED && $sale->returns->isEmpty(),
             'subtotal' => round((float) $sale->subtotal, 2),
             'tax_total' => round((float) $sale->tax_total, 2),
             'discount_total' => round((float) $sale->discount_total, 2),
@@ -752,61 +760,169 @@ class SaleService
     }
 
     /**
+     * Form payload for editing a completed order in admin.
+     *
+     * @return array<string, mixed>
+     */
+    public function serializeForForm(Sale $sale): array
+    {
+        $sale->loadMissing([
+            'items.product:id,name',
+            'items.variant:id,name,short_code,sale_unit_id',
+            'items.unit:id,name,code',
+            'items.product.tax:id,name,rate,is_inclusive',
+            'payments.moneySource:id,name',
+            'returns:id',
+            'customer:id,name,phone,address',
+            'rider:id,name,username',
+        ]);
+
+        $firstPayment = $sale->payments->first();
+
+        return [
+            'id' => $sale->id,
+            'number' => $sale->number,
+            'customer_id' => $sale->customer_id,
+            'business_date' => $sale->business_date?->toDateString()
+                ?? ($sale->created_at?->toDateString() ?? company_today()),
+            'discount_total' => round((float) $sale->discount_total, 2),
+            'notes' => $sale->notes ?? '',
+            'is_delivery' => (bool) $sale->is_delivery,
+            'delivery_charge' => round((float) ($sale->delivery_charge ?? 0), 2),
+            'delivery_address' => $sale->delivery_address ?? '',
+            'rider_id' => $sale->rider_id,
+            'money_source_id' => $firstPayment?->money_source_id,
+            'paid_amount' => round((float) $sale->paid_total, 2),
+            'can_edit' => $sale->status === Sale::STATUS_COMPLETED && $sale->returns->isEmpty(),
+            'items' => $sale->items->map(function (SaleItem $item) {
+                $tax = $item->product?->tax;
+
+                return [
+                    'variant_id' => (string) $item->variant_id,
+                    'unit_id' => $item->unit_id ? (string) $item->unit_id : '',
+                    'quantity' => (string) round((float) $item->quantity, 4),
+                    'unit_price' => (string) round((float) $item->unit_price, 4),
+                    'discount' => (string) round((float) $item->discount, 4),
+                    'display_name' => trim(
+                        ($item->product?->name ?? 'Item')
+                        .($item->variant?->name ? ' — '.$item->variant->name : ''),
+                    ),
+                    'short_code' => $item->variant?->short_code ?? '',
+                    'sale_unit_label' => $item->unit?->code ?: ($item->unit?->name ?: '—'),
+                    'tax' => $tax
+                        ? [
+                            'id' => $tax->id,
+                            'name' => $tax->name,
+                            'rate' => (float) $tax->rate,
+                            'is_inclusive' => (bool) $tax->is_inclusive,
+                        ]
+                        : (
+                            (float) $item->tax_rate > 0
+                                ? [
+                                    'id' => $item->tax_id,
+                                    'name' => $item->tax_name,
+                                    'rate' => (float) $item->tax_rate,
+                                    'is_inclusive' => false,
+                                ]
+                                : null
+                        ),
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    /**
+     * Replace a completed sale's lines/payments (admin edit).
+     *
+     * @param  array{
+     *   customer_id?:int|null,
+     *   business_date?:string|null,
+     *   discount_total?:float|int|string,
+     *   notes?:string|null,
+     *   items: list<array{
+     *     variant_id:int,
+     *     unit_id?:int,
+     *     quantity:float|int|string,
+     *     unit_price?:float|int|string,
+     *     discount?:float|int|string
+     *   }>,
+     *   payments?: list<array{money_source_id:int, amount:float|int|string}>,
+     *   allow_credit?:bool
+     * }  $data
+     */
+    public function update(Sale $sale, array $data): Sale
+    {
+        return DB::transaction(function () use ($sale, $data) {
+            $locked = Sale::query()->whereKey($sale->id)->lockForUpdate()->firstOrFail();
+            $this->assertEditable($locked);
+
+            $locked->load(['items.variant.product', 'customer', 'returns:id', 'payments']);
+            $this->reverseCompletedEffects($locked, 'Edit sale');
+
+            $locked->payments()->delete();
+            $locked->items()->delete();
+
+            $customerId = $data['customer_id'] ?? null;
+            $delivery = $this->resolveDelivery($data);
+            $businessDate = array_key_exists('business_date', $data)
+                ? $this->resolveBusinessDate($data['business_date'])
+                : ($locked->business_date?->toDateString() ?? company_today());
+
+            $locked->update([
+                'customer_id' => $customerId,
+                'business_date' => $businessDate,
+                'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?? null) : $locked->notes,
+                ...$delivery,
+            ]);
+
+            $totals = $this->writeItems(
+                sale: $locked,
+                items: $data['items'],
+                branchId: (int) $locked->branch_id,
+                discountTotal: (float) ($data['discount_total'] ?? 0),
+                deductStock: true,
+            );
+            $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
+
+            $paid = $this->recordPayments($locked, $data['payments'] ?? []);
+            $this->applyCreditIfNeeded(
+                sale: $locked,
+                customerId: $customerId,
+                total: $grandTotal,
+                paid: $paid,
+                allowCredit: ($data['allow_credit'] ?? true) !== false,
+            );
+
+            $locked->update([
+                'subtotal' => $totals['subtotal'],
+                'tax_total' => $totals['tax_total'],
+                'discount_total' => $totals['discount_total'],
+                'total' => $grandTotal,
+                'paid_total' => $paid,
+            ]);
+
+            app(ActivityLogger::class)->log(
+                'sale.update',
+                "Sale {$locked->number} updated · total {$grandTotal}",
+                $locked,
+                ['total' => $grandTotal, 'paid' => $paid],
+            );
+
+            return $locked->fresh(['items.product', 'items.variant', 'payments.moneySource', 'customer']);
+        });
+    }
+
+    /**
      * Void a completed sale: restore stock and reverse unpaid customer credit.
      */
     public function voidSale(Sale $sale): Sale
     {
         return DB::transaction(function () use ($sale) {
             $locked = Sale::query()->whereKey($sale->id)->lockForUpdate()->firstOrFail();
+            $this->assertEditable($locked);
 
-            if ($locked->isParked()) {
-                throw new \RuntimeException('Parked bills cannot be cancelled here. Discard them from Saved instead.');
-            }
-
-            if ($locked->status === Sale::STATUS_VOID) {
-                throw new \RuntimeException('This sale is already cancelled.');
-            }
-
-            if ($locked->status !== Sale::STATUS_COMPLETED) {
-                throw new \RuntimeException('Only completed sales can be cancelled.');
-            }
-
-            $locked->load(['items.variant.product', 'customer']);
-
-            foreach ($locked->items as $item) {
-                $variant = $item->variant;
-                if (! $variant) {
-                    continue;
-                }
-                $product = $variant->product;
-                if (! $product?->track_stock) {
-                    continue;
-                }
-
-                $qty = (float) $item->quantity_in_sale_unit;
-                if ($qty <= 0) {
-                    continue;
-                }
-
-                $unitCost = (float) ($item->cost_per_unit ?? $variant->cost_per_unit ?? 0);
-                $this->inventory->receive(
-                    branchId: (int) $locked->branch_id,
-                    variant: $variant,
-                    qtySaleUnits: $qty,
-                    lineCostTotal: $qty * $unitCost,
-                    reference: $item,
-                    notes: "Void sale {$locked->number}",
-                    type: 'sale_void',
-                );
-            }
-
-            $due = round((float) $locked->total - (float) $locked->paid_total, 4);
-            if ($due > 0.01 && $locked->customer_id) {
-                $customer = Customer::query()->lockForUpdate()->find($locked->customer_id);
-                if ($customer) {
-                    $this->customers->credit($customer, $due);
-                }
-            }
+            $locked->load(['items.variant.product', 'customer', 'returns:id']);
+            $this->reverseCompletedEffects($locked, 'Void sale');
 
             $locked->update(['status' => Sale::STATUS_VOID]);
 
@@ -819,6 +935,69 @@ class SaleService
 
             return $locked->fresh(['customer', 'cashier', 'items']);
         });
+    }
+
+    protected function assertEditable(Sale $sale): void
+    {
+        if ($sale->isParked()) {
+            throw new \RuntimeException('Parked bills cannot be edited here. Open them from Saved instead.');
+        }
+
+        if ($sale->status === Sale::STATUS_VOID) {
+            throw new \RuntimeException('This sale has already been deleted.');
+        }
+
+        if ($sale->status !== Sale::STATUS_COMPLETED) {
+            throw new \RuntimeException('Only completed sales can be edited.');
+        }
+
+        $sale->loadMissing('returns:id');
+        if ($sale->returns->isNotEmpty()) {
+            throw new \RuntimeException('This order has returns and cannot be changed. Reverse the returns first.');
+        }
+    }
+
+    /**
+     * Restore stock and reverse unpaid customer credit for a completed sale.
+     */
+    protected function reverseCompletedEffects(Sale $sale, string $notePrefix): void
+    {
+        $sale->loadMissing(['items.variant.product', 'customer']);
+
+        foreach ($sale->items as $item) {
+            $variant = $item->variant;
+            if (! $variant) {
+                continue;
+            }
+            $product = $variant->product;
+            if (! $product?->track_stock) {
+                continue;
+            }
+
+            $qty = (float) $item->quantity_in_sale_unit;
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $unitCost = (float) ($item->cost_per_unit ?? $variant->cost_per_unit ?? 0);
+            $this->inventory->receive(
+                branchId: (int) $sale->branch_id,
+                variant: $variant,
+                qtySaleUnits: $qty,
+                lineCostTotal: $qty * $unitCost,
+                reference: $item,
+                notes: "{$notePrefix} {$sale->number}",
+                type: 'sale_void',
+            );
+        }
+
+        $due = round((float) $sale->total - (float) $sale->paid_total, 4);
+        if ($due > 0.01 && $sale->customer_id) {
+            $customer = Customer::query()->lockForUpdate()->find($sale->customer_id);
+            if ($customer) {
+                $this->customers->credit($customer, $due);
+            }
+        }
     }
 
     /**

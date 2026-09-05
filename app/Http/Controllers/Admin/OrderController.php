@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSaleRequest;
+use App\Http\Requests\Admin\UpdateSaleRequest;
 use App\Models\Sale;
 use App\Services\SaleInvoicePdfService;
 use App\Services\SaleService;
@@ -26,6 +27,16 @@ class OrderController extends Controller
 
     public function index(Request $request): Response
     {
+        $editing = null;
+        if ($request->filled('edit')) {
+            $sale = Sale::query()->findOrFail($request->integer('edit'));
+            $branch = BranchContext::ensure();
+            if ((int) $sale->branch_id !== (int) $branch->id) {
+                abort(404);
+            }
+            $editing = $this->sales->serializeForForm($sale);
+        }
+
         return Inertia::render('Admin/Orders/Index', [
             ...$this->sales->paginate([
                 'q' => $request->input('q'),
@@ -38,6 +49,8 @@ class OrderController extends Controller
                 'direction' => $request->input('direction'),
             ]),
             ...$this->sales->formOptions(),
+            'editing' => $editing,
+            'form_open' => $request->boolean('open') || $editing !== null,
         ]);
     }
 
@@ -65,6 +78,30 @@ class OrderController extends Controller
         return redirect()
             ->route('admin.orders.show', $sale)
             ->with('status', "Order {$sale->number} created.");
+    }
+
+    public function update(UpdateSaleRequest $request, Sale $sale): RedirectResponse
+    {
+        $branch = BranchContext::ensure();
+        if ((int) $sale->branch_id !== (int) $branch->id) {
+            abort(404);
+        }
+
+        try {
+            $sale = $this->sales->update($sale, $request->payload(
+                $branch->id,
+                $sale->shift_id,
+                $this->settings->allowPosCredit(),
+            ));
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
+            return back()->withErrors(['items' => $e->getMessage()])->withInput();
+        }
+
+        return redirect()
+            ->route('admin.orders.index')
+            ->with('status', "Order {$sale->number} updated.");
     }
 
     public function receipt(Request $request, Sale $sale): Response
@@ -95,5 +132,23 @@ class OrderController extends Controller
         }
 
         return Inertia::render('Admin/Orders/Show', $this->sales->show($sale));
+    }
+
+    public function destroy(Sale $sale): RedirectResponse
+    {
+        $branch = BranchContext::ensure();
+        if ((int) $sale->branch_id !== (int) $branch->id) {
+            abort(404);
+        }
+
+        try {
+            $voided = $this->sales->voidSale($sale);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['order' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.orders.index')
+            ->with('status', "Order {$voided->number} deleted. Stock was restored.");
     }
 }

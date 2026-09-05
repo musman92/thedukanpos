@@ -85,9 +85,44 @@ const emptyData = (defaults = {}) => ({
     items: [],
 });
 
+function dataFromOrder(order, defaults = {}) {
+    if (!order) {
+        return emptyData(defaults);
+    }
+
+    return {
+        customer_id: order.customer_id ? String(order.customer_id) : '',
+        business_date: order.business_date || defaults.todayDate || localToday(),
+        discount_total: String(order.discount_total ?? 0),
+        notes: order.notes || '',
+        is_delivery: Boolean(order.is_delivery),
+        delivery_charge: String(order.delivery_charge ?? 0),
+        delivery_address: order.delivery_address || '',
+        rider_id: order.rider_id ? String(order.rider_id) : '',
+        money_source_id: order.money_source_id
+            ? String(order.money_source_id)
+            : defaults.moneySourceId
+              ? String(defaults.moneySourceId)
+              : '',
+        paid_amount: String(order.paid_amount ?? 0),
+        items: (order.items || []).map((item) => ({
+            variant_id: String(item.variant_id),
+            unit_id: item.unit_id ? String(item.unit_id) : '',
+            quantity: item.quantity ?? '',
+            unit_price: item.unit_price ?? '',
+            discount: item.discount ?? '0',
+            display_name: item.display_name || '—',
+            short_code: item.short_code || '',
+            sale_unit_label: item.sale_unit_label || '—',
+            tax: item.tax || null,
+        })),
+    };
+}
+
 export default function OrderFormDrawer({
     open,
     onClose,
+    order = null,
     customers = [],
     variants = [],
     money_sources: moneySources = [],
@@ -97,6 +132,7 @@ export default function OrderFormDrawer({
     allow_credit: allowCredit = true,
     enable_delivery: enableDelivery = false,
 }) {
+    const isEdit = !!order?.id;
     const defaultMoneySourceId = moneySources[0]?.id ?? null;
     const form = useForm(
         emptyData({
@@ -113,20 +149,19 @@ export default function OrderFormDrawer({
         if (!open) return undefined;
 
         form.clearErrors();
-        form.setData(
-            emptyData({
-                defaultCustomerId,
-                todayDate,
-                moneySourceId: defaultMoneySourceId,
-            }),
-        );
+        const next = dataFromOrder(order, {
+            defaultCustomerId,
+            todayDate,
+            moneySourceId: defaultMoneySourceId,
+        });
+        form.setData(next);
         setPickerKey((k) => k + 1);
         setDiscountMode('amount');
-        setDiscountInput('0');
+        setDiscountInput(String(next.discount_total || '0'));
 
         return undefined;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, defaultCustomerId, todayDate, defaultMoneySourceId]);
+    }, [open, order?.id, defaultCustomerId, todayDate, defaultMoneySourceId]);
 
     const customerOptions = useMemo(
         () =>
@@ -308,22 +343,33 @@ export default function OrderFormDrawer({
                 discount: item.discount || 0,
             })),
         }));
-        form.post(route('admin.orders.store'), {
+
+        const options = {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
                 onClose();
             },
             onFinish: () => form.transform((d) => d),
-        });
+        };
+
+        if (isEdit) {
+            form.put(route('admin.orders.update', order.id), options);
+        } else {
+            form.post(route('admin.orders.store'), options);
+        }
     };
 
     return (
         <Drawer
             open={open}
             onClose={onClose}
-            title="New order"
-            description="Create a sale from the back office — stock is deducted and payments post like POS."
+            title={isEdit ? `Edit order ${order.number}` : 'New order'}
+            description={
+                isEdit
+                    ? 'Update lines, payment, and delivery. Stock and customer balances are recalculated.'
+                    : 'Create a sale from the back office — stock is deducted and payments post like POS.'
+            }
             width="wide"
             bodyClassName="overflow-y-auto flex flex-col"
         >
@@ -729,7 +775,11 @@ export default function OrderFormDrawer({
                         Cancel
                     </Button>
                     <Button type="submit" disabled={form.processing || form.data.items.length === 0}>
-                        {form.processing ? 'Saving…' : 'Create order'}
+                        {form.processing
+                            ? 'Saving…'
+                            : isEdit
+                              ? 'Update order'
+                              : 'Create order'}
                     </Button>
                 </div>
             </form>

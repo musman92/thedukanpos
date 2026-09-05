@@ -6,8 +6,9 @@ import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import OrderFormDrawer from '@/Pages/Admin/Orders/OrderFormDrawer';
+import { confirmAction } from '@/lib/confirm';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Monitor, Plus, Search } from 'lucide-react';
+import { Eye, Monitor, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function hasRoute(name) {
@@ -41,6 +42,17 @@ function PaymentBadge({ status }) {
     );
 }
 
+function StatusBadge({ sale }) {
+    if (sale.is_void || sale.status === 'void') {
+        return (
+            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                Deleted
+            </span>
+        );
+    }
+    return <PaymentBadge status={sale.payment_status} />;
+}
+
 export default function Index({
     sales,
     filters,
@@ -53,9 +65,12 @@ export default function Index({
     allow_credit: allowCredit = true,
     enable_delivery: enableDelivery = false,
     branch,
+    editing = null,
+    form_open: formOpen = false,
 }) {
     const { url } = usePage();
     const [showForm, setShowForm] = useState(false);
+    const [editingOrder, setEditingOrder] = useState(null);
     const [q, setQ] = useState(filters.q || '');
     const [localFilters, setLocalFilters] = useState({
         customer_id: filters.customer_id || '',
@@ -80,17 +95,25 @@ export default function Index({
     };
 
     useEffect(() => {
+        if (editing) {
+            setEditingOrder(editing);
+            setShowForm(true);
+            return;
+        }
+
         const params = new URLSearchParams(url.split('?')[1] || '');
-        if (params.get('open') === '1') {
+        if (params.get('open') === '1' || formOpen) {
+            setEditingOrder(null);
             setShowForm(true);
         }
-    }, [url]);
+    }, [url, editing, formOpen]);
 
     const closeForm = () => {
         setShowForm(false);
+        setEditingOrder(null);
         const params = new URLSearchParams(url.split('?')[1] || '');
-        if (params.get('open') === '1') {
-            router.get(route('admin.orders.index'), listQuery, { preserveState: true, replace: true });
+        if (params.get('open') === '1' || params.get('edit')) {
+            visitList({ open: undefined, edit: undefined });
         }
     };
 
@@ -98,6 +121,15 @@ export default function Index({
         router.get(route('admin.orders.index'), { ...listQuery, ...overrides }, {
             preserveState: true,
         });
+    };
+
+    const openCreate = () => {
+        setEditingOrder(null);
+        setShowForm(true);
+    };
+
+    const openEdit = (row) => {
+        visitList({ edit: row.id });
     };
 
     const toggleSort = (column) => {
@@ -111,6 +143,23 @@ export default function Index({
         visitList({ q, ...localFilters });
     };
 
+    const destroyOrder = async (row) => {
+        if (row.can_delete === false || row.is_void) return;
+
+        const ok = await confirmAction({
+            title: `Delete order ${row.number}?`,
+            text: 'Stock will be restored and any unpaid customer balance from this order will be reversed. This cannot be undone.',
+            confirmText: 'Yes, delete order',
+            cancelText: 'Keep order',
+            icon: 'warning',
+        });
+        if (!ok) return;
+
+        router.delete(route('admin.orders.destroy', row.id), {
+            preserveScroll: true,
+        });
+    };
+
     return (
         <AdminLayout
             title="Orders"
@@ -121,7 +170,7 @@ export default function Index({
             }
             actions={
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button type="button" onClick={() => setShowForm(true)}>
+                    <Button type="button" onClick={openCreate}>
                         <Plus className="h-4 w-4" strokeWidth={2.25} />
                         Add order
                     </Button>
@@ -296,24 +345,46 @@ export default function Index({
                                         {money(row.paid_total)}
                                     </td>
                                     <td className="px-3 py-3">
-                                        <PaymentBadge status={row.payment_status} />
+                                        <StatusBadge sale={row} />
                                     </td>
                                     <td className="px-3 py-3 text-theme-ink-soft">
                                         {row.cashier?.name || '—'}
                                     </td>
                                     <td className="px-3 py-3">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <PrintFormatMenu
-                                                receiptHref={route('admin.orders.receipt', row.id)}
-                                                invoiceHref={route('admin.orders.invoice', row.id)}
-                                            />
+                                        <div className="inline-flex items-center justify-end gap-0.5">
+                                            {!row.is_void && (
+                                                <PrintFormatMenu
+                                                    receiptHref={route('admin.orders.receipt', row.id)}
+                                                    invoiceHref={route('admin.orders.invoice', row.id)}
+                                                />
+                                            )}
                                             <Link
                                                 href={route('admin.orders.show', row.id)}
-                                                className="inline-flex rounded-lg p-2 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
+                                                className="inline-flex rounded-md p-1.5 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
                                                 title="View"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Link>
+                                            {row.can_edit !== false && !row.is_void && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEdit(row)}
+                                                    className="inline-flex rounded-md p-1.5 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            {row.can_delete !== false && !row.is_void && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => destroyOrder(row)}
+                                                    className="inline-flex rounded-md p-1.5 text-theme-ink-muted hover:bg-rose-50 hover:text-rose-700"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -328,6 +399,7 @@ export default function Index({
             <OrderFormDrawer
                 open={showForm}
                 onClose={closeForm}
+                order={editingOrder}
                 customers={customers}
                 variants={variants}
                 money_sources={moneySources}

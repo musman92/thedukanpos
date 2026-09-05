@@ -120,7 +120,7 @@ export default function PrintFormatMenu({
                 aria-expanded={open}
                 aria-controls={menuId}
                 onClick={() => setOpen((value) => !value)}
-                className="inline-flex rounded-lg p-2 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
+                className="inline-flex rounded-md p-1.5 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
                 title="Print"
             >
                 <Printer className="h-4 w-4" />

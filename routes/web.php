@@ -162,9 +162,11 @@ Route::middleware(['tenancy.session', 'auth'])->group(function () {
         Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
         Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+        Route::put('/orders/{sale}', [OrderController::class, 'update'])->name('orders.update');
         Route::get('/orders/{sale}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
         Route::get('/orders/{sale}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
         Route::get('/orders/{sale}', [OrderController::class, 'show'])->name('orders.show');
+        Route::delete('/orders/{sale}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
         Route::get('/quotations', [QuotationController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationController::class, 'store'])->name('quotations.store');

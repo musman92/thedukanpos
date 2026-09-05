@@ -1,7 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import PrintFormatMenu from '@/Components/PrintFormatMenu';
+import Button from '@/Components/Ui/Button';
+import { confirmAction } from '@/lib/confirm';
 import { formatAmount as money } from '@/lib/money';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 function PaymentBadge({ status }) {
     if (status === 'paid') {
@@ -34,6 +37,26 @@ const DELIVERY_STATUS_LABELS = {
 };
 
 export default function Show({ sale, branch }) {
+    const { errors, flash } = usePage().props;
+    const isVoid = sale.is_void || sale.status === 'void';
+    const canDelete = sale.can_delete !== false && !isVoid;
+    const canEdit = sale.can_edit !== false && !isVoid;
+
+    const destroyOrder = async () => {
+        if (!canDelete) return;
+
+        const ok = await confirmAction({
+            title: `Delete order ${sale.number}?`,
+            text: 'Stock will be restored and any unpaid customer balance from this order will be reversed. This cannot be undone.',
+            confirmText: 'Yes, delete order',
+            cancelText: 'Keep order',
+            icon: 'warning',
+        });
+        if (!ok) return;
+
+        router.delete(route('admin.orders.destroy', sale.id));
+    };
+
     return (
         <AdminLayout
             title={sale.number}
@@ -46,15 +69,46 @@ export default function Show({ sale, branch }) {
                     >
                         Back
                     </Link>
-                    <PrintFormatMenu
-                        variant="button"
-                        receiptHref={route('admin.orders.receipt', sale.id)}
-                        invoiceHref={route('admin.orders.invoice', sale.id)}
-                    />
+                    {!isVoid && (
+                        <PrintFormatMenu
+                            variant="button"
+                            receiptHref={route('admin.orders.receipt', sale.id)}
+                            invoiceHref={route('admin.orders.invoice', sale.id)}
+                        />
+                    )}
+                    {canEdit && (
+                        <Button
+                            variant="secondary"
+                            onClick={() =>
+                                router.get(route('admin.orders.index'), { edit: sale.id })
+                            }
+                        >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                        </Button>
+                    )}
+                    {canDelete && (
+                        <Button variant="danger" onClick={destroyOrder}>
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                        </Button>
+                    )}
                 </div>
             }
         >
             <Head title={sale.number} />
+
+            {(errors?.order || flash?.error) && (
+                <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {errors?.order || flash?.error}
+                </div>
+            )}
+
+            {isVoid && (
+                <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    This order has been deleted. Stock was restored when it was deleted.
+                </div>
+            )}
 
             <div className="mb-4 grid gap-3 rounded-xl border border-theme-border bg-theme-surface px-4 py-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
                 <div>
@@ -72,7 +126,13 @@ export default function Show({ sale, branch }) {
                 <div>
                     <p className="text-xs uppercase tracking-wide text-theme-ink-muted">Payment</p>
                     <div className="mt-1">
-                        <PaymentBadge status={sale.payment_status} />
+                        {isVoid ? (
+                            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                                Deleted
+                            </span>
+                        ) : (
+                            <PaymentBadge status={sale.payment_status} />
+                        )}
                     </div>
                 </div>
                 <div>
