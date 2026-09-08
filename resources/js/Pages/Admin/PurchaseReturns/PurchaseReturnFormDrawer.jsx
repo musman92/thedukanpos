@@ -2,8 +2,10 @@ import Button from '@/Components/Ui/Button';
 import { formatAmount as money } from '@/lib/money';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
+import { lineMatchesQuery, pickExactLine } from '@/lib/catalogSearch';
 import { router, useForm } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 const selectClass =
     'h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
@@ -49,6 +51,9 @@ export default function PurchaseReturnFormDrawer({
         items: buildItems(selectedPurchase, purchaseReturn),
     });
 
+    const [itemQuery, setItemQuery] = useState('');
+    const [highlightId, setHighlightId] = useState(null);
+
     useEffect(() => {
         if (!open) {
             return undefined;
@@ -70,6 +75,8 @@ export default function PurchaseReturnFormDrawer({
             notes: purchaseReturn?.notes || '',
             items: buildItems(selectedPurchase, purchaseReturn),
         });
+        setItemQuery('');
+        setHighlightId(null);
 
         return undefined;
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,6 +148,36 @@ export default function PurchaseReturnFormDrawer({
                 i === index ? { ...item, quantity: value } : item,
             ),
         );
+    };
+
+    const visibleItems = useMemo(() => {
+        return form.data.items
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => lineMatchesQuery(row._meta || {}, itemQuery));
+    }, [form.data.items, itemQuery]);
+
+    const applyScan = (rawQuery) => {
+        const matchIndex = pickExactLine(
+            form.data.items,
+            rawQuery,
+            (row) => row._meta || {},
+        );
+        if (matchIndex < 0) return false;
+
+        const row = form.data.items[matchIndex];
+        const max = Number(row._meta?.returnable_quantity || 0);
+        const current = Number(row.quantity || 0);
+        const next = Math.min(max, current + 1);
+        setQty(matchIndex, next > 0 ? String(next) : '');
+        setHighlightId(row.purchase_item_id);
+        setItemQuery('');
+        return true;
+    };
+
+    const onItemSearchKeyDown = (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        applyScan(e.currentTarget.value);
     };
 
     const submit = (e) => {
@@ -251,8 +288,26 @@ export default function PurchaseReturnFormDrawer({
                     </Field>
 
                     <div className="overflow-hidden rounded-lg border border-theme-border">
-                        <div className="border-b border-theme-border px-4 py-3 text-sm font-semibold text-theme-ink">
-                            Returnable lines
+                        <div className="flex flex-col gap-3 border-b border-theme-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-sm font-semibold text-theme-ink">
+                                Returnable lines
+                            </div>
+                            {form.data.items.length > 0 && (
+                                <div className="relative w-full sm:max-w-sm">
+                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-ink-muted" />
+                                    <input
+                                        value={itemQuery}
+                                        onChange={(e) => setItemQuery(e.target.value)}
+                                        onKeyDown={onItemSearchKeyDown}
+                                        placeholder="Scan barcode or search lines…"
+                                        className="h-10 w-full rounded-lg border border-theme-border bg-theme-surface py-2 pl-8 pr-3 text-sm text-theme-ink outline-none placeholder:text-theme-ink-muted focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                    />
+                                    <p className="mt-1 text-[11px] text-theme-ink-muted">
+                                        Enter on an exact barcode or short code adds 1 to return
+                                        qty.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         {!form.data.supplier_id && (
                             <p className="px-4 py-10 text-center text-sm text-theme-ink-muted">
@@ -271,7 +326,12 @@ export default function PurchaseReturnFormDrawer({
                                 No returnable quantity left on this purchase.
                             </p>
                         )}
-                        {form.data.items.length > 0 && (
+                        {form.data.items.length > 0 && visibleItems.length === 0 && (
+                            <p className="px-4 py-10 text-center text-sm text-theme-ink-muted">
+                                No lines match that barcode or search.
+                            </p>
+                        )}
+                        {visibleItems.length > 0 && (
                             <div className="overflow-x-auto">
                                 <table className="w-full table-fixed text-left text-sm">
                                     <colgroup>
@@ -295,15 +355,22 @@ export default function PurchaseReturnFormDrawer({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {form.data.items.map((row, index) => {
+                                        {visibleItems.map(({ row, index }) => {
                                             const meta = row._meta || {};
                                             const line =
                                                 Number(row.quantity || 0) *
                                                 Number(meta.unit_price || 0);
+                                            const highlighted =
+                                                String(highlightId) ===
+                                                String(row.purchase_item_id);
                                             return (
                                                 <tr
                                                     key={row.purchase_item_id}
-                                                    className="border-t border-theme-border"
+                                                    className={`border-t border-theme-border ${
+                                                        highlighted
+                                                            ? 'bg-theme-primary/5'
+                                                            : ''
+                                                    }`}
                                                 >
                                                     <td className="px-3 py-3 text-theme-ink">
                                                         <span className="line-clamp-2">
@@ -312,6 +379,13 @@ export default function PurchaseReturnFormDrawer({
                                                                 ? ` — ${meta.variant_name}`
                                                                 : ''}
                                                         </span>
+                                                        {(meta.short_code || meta.barcode) && (
+                                                            <span className="mt-0.5 block text-xs text-theme-ink-muted">
+                                                                {[meta.short_code, meta.barcode]
+                                                                    .filter(Boolean)
+                                                                    .join(' · ')}
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="px-3 py-3 tabular-nums text-theme-ink-soft">
                                                         {meta.quantity} {meta.unit_code || ''}

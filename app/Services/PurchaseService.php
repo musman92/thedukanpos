@@ -117,7 +117,7 @@ class PurchaseService
         return [
             'suppliers' => $this->supplierOptions(),
             'variants' => ProductVariant::query()
-                ->with(['product:id,name', 'purchaseUnit:id,name,code', 'saleUnit:id,name,code'])
+                ->with(['product:id,name,barcode', 'purchaseUnit:id,name,code', 'saleUnit:id,name,code'])
                 ->where('is_active', true)
                 ->whereHas('product', fn ($q) => $q->where('is_active', true))
                 ->orderBy('short_code')
@@ -126,6 +126,7 @@ class PurchaseService
                     'id' => $v->id,
                     'label' => $v->displayName(),
                     'short_code' => $v->short_code,
+                    'barcode' => $v->barcode ?: $v->product?->barcode,
                     'purchase_unit_id' => $v->purchase_unit_id,
                     'sale_unit_id' => $v->sale_unit_id,
                     'conversion_rate' => (float) $v->conversion_rate,
@@ -276,7 +277,7 @@ class PurchaseService
                 $bonusQty = (float) ($row['bonus_quantity'] ?? 0);
                 $bonusUnitId = isset($row['bonus_unit_id']) && $row['bonus_unit_id'] !== '' && $row['bonus_unit_id'] !== null
                     ? (int) $row['bonus_unit_id']
-                    : $variant->sale_unit_id;
+                    : $unitId;
 
                 $paidInSale = $variant->toSaleQuantity($qty, $unitId);
                 $bonusInSale = $bonusQty > 0
@@ -469,7 +470,7 @@ class PurchaseService
                 $bonusQty = (float) ($row['bonus_quantity'] ?? 0);
                 $bonusUnitId = isset($row['bonus_unit_id']) && $row['bonus_unit_id'] !== '' && $row['bonus_unit_id'] !== null
                     ? (int) $row['bonus_unit_id']
-                    : $variant->sale_unit_id;
+                    : $unitId;
 
                 $paidInSale = $variant->toSaleQuantity($qty, $unitId);
                 $bonusInSale = $bonusQty > 0
@@ -578,8 +579,8 @@ class PurchaseService
     public function serializeForForm(Purchase $purchase): array
     {
         $purchase->loadMissing([
-            'items.product:id,name',
-            'items.variant:id,name,short_code',
+            'items.product:id,name,barcode',
+            'items.variant:id,name,short_code,barcode',
             'items.unit:id,name,code',
             'returns:id',
         ]);
@@ -611,6 +612,7 @@ class PurchaseService
                     'expiry_date' => $item->expiry_date?->format('Y-m-d') ?? '',
                     'display_name' => $label !== '' ? $label : ($item->variant?->name ?? 'Item'),
                     'short_code' => $item->variant?->short_code ?? '',
+                    'barcode' => $item->variant?->barcode ?: ($item->product?->barcode ?? ''),
                     'purchase_unit_label' => $item->unit?->code ?: ($item->unit?->name ?: '—'),
                 ];
             })->values()->all(),

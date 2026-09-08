@@ -172,36 +172,44 @@ function moduleMatches(current, mod) {
     );
 }
 
-function NavLink({ mod, current, t }) {
+function NavLink({ mod, current, t, collapsed = false }) {
     const Icon = mod.icon;
     const active = moduleMatches(current, mod);
+    const label = t(mod.labelKey);
 
     return (
-        <Link href={route(mod.href)} className={`dp-nav-item ${active ? 'dp-nav-item-active' : ''}`}>
+        <Link
+            href={route(mod.href)}
+            title={label}
+            className={`dp-nav-item ${active ? 'dp-nav-item-active' : ''} ${collapsed ? 'justify-center px-0' : ''}`}
+        >
             <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-            <span className="min-w-0 flex-1 truncate">{t(mod.labelKey)}</span>
+            {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
         </Link>
     );
 }
 
-function NavGroup({ mod, current, open, onToggle, t }) {
+function NavGroup({ mod, current, open, onToggle, t, collapsed = false }) {
     const Icon = mod.icon;
     const groupActive = moduleMatches(current, mod);
+    const label = t(mod.labelKey);
 
     return (
         <div>
             <button
                 type="button"
                 onClick={onToggle}
-                className={`dp-nav-item ${groupActive ? 'dp-nav-item-active' : ''}`}
+                title={label}
+                className={`dp-nav-item ${groupActive ? 'dp-nav-item-active' : ''} ${collapsed ? 'justify-center px-0' : ''}`}
             >
                 <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-                <span className="min-w-0 flex-1 truncate text-start">{t(mod.labelKey)}</span>
-                {open ? (
-                    <Minus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />
-                ) : (
-                    <Plus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />
-                )}
+                {!collapsed && <span className="min-w-0 flex-1 truncate text-start">{label}</span>}
+                {!collapsed &&
+                    (open ? (
+                        <Minus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />
+                    ) : (
+                        <Plus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />
+                    ))}
             </button>
 
             {open && (
@@ -235,8 +243,18 @@ export default function AdminLayout({
     const { flash, addons } = usePage().props;
     const { t } = useI18n();
     const current = route().current();
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(() => {
+        try {
+            return localStorage.getItem('dukanpos.sidebar-collapsed') === '1';
+        } catch {
+            return false;
+        }
+    });
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(
+        () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+    );
+    const iconRail = collapsed && isDesktop;
 
     const visibleModules = useMemo(
         () => modules.filter((mod) => mod.id !== 'shifts' || addons?.shifts),
@@ -259,6 +277,22 @@ export default function AdminLayout({
             return next;
         });
     }, [activeId]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dukanpos.sidebar-collapsed', collapsed ? '1' : '0');
+        } catch {
+            // ignore quota / private mode
+        }
+    }, [collapsed]);
+
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const onChange = () => setIsDesktop(mq.matches);
+        onChange();
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
 
     useEffect(() => {
         setMobileOpen(false);
@@ -297,20 +331,21 @@ export default function AdminLayout({
                 />
             )}
             <aside
-                className={`dp-sidebar fixed inset-y-0 start-0 z-50 flex h-[100dvh] w-[min(86vw,20rem)] shrink-0 flex-col shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none lg:transition-[width] ${
+                id="admin-sidebar"
+                className={`dp-sidebar fixed inset-y-0 start-0 z-50 flex h-[100dvh] w-[min(86vw,16rem)] shrink-0 flex-col overflow-hidden shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shadow-none lg:transition-[width] ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'
                 } ${
-                    collapsed ? 'w-[4.25rem]' : 'w-60'
+                    collapsed ? 'lg:w-[4.25rem]' : 'lg:w-52'
                 } lg:translate-x-0 rtl:lg:translate-x-0`}
             >
-                <div className="flex min-h-14 items-center gap-2.5 border-b border-theme-border px-3 pt-[env(safe-area-inset-top)]">
+                <div className={`flex min-h-14 items-center gap-2.5 border-b border-theme-border px-3 pt-[env(safe-area-inset-top)] ${iconRail ? 'justify-center' : ''}`}>
                     <div
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
                         style={{ background: 'var(--color-brand-mark)' }}
                     >
                         D
                     </div>
-                    {!collapsed && (
+                    {!iconRail && (
                         <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-theme-ink">DukanPOS</p>
                             <p className="truncate text-[11px] text-theme-ink-muted">
@@ -331,18 +366,19 @@ export default function AdminLayout({
                 <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                     {visibleModules.map((mod) =>
                         mod.type === 'link' ? (
-                            <NavLink key={mod.id} mod={mod} current={current} t={t} />
+                            <NavLink key={mod.id} mod={mod} current={current} t={t} collapsed={iconRail} />
                         ) : (
                             <NavGroup
                                 key={mod.id}
                                 mod={mod}
                                 current={current}
-                                open={!collapsed && openIds.has(mod.id)}
+                                open={!iconRail && openIds.has(mod.id)}
                                 onToggle={() => {
-                                    if (collapsed) setCollapsed(false);
+                                    if (iconRail) setCollapsed(false);
                                     toggle(mod.id);
                                 }}
                                 t={t}
+                                collapsed={iconRail}
                             />
                         ),
                     )}
@@ -355,14 +391,16 @@ export default function AdminLayout({
                         <button
                             type="button"
                             onClick={() => {
-                                if (window.matchMedia('(min-width: 1024px)').matches) {
+                                if (isDesktop) {
                                     setCollapsed((v) => !v);
                                 } else {
-                                    setMobileOpen(true);
+                                    setMobileOpen((open) => !open);
                                 }
                             }}
                             className="dp-icon-btn min-h-11 min-w-11"
                             title={t('header.toggle_sidebar')}
+                            aria-expanded={isDesktop ? String(!collapsed) : String(mobileOpen)}
+                            aria-controls="admin-sidebar"
                         >
                             <PanelLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
                         </button>

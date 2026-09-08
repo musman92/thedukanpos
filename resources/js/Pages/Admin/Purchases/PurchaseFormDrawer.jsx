@@ -2,6 +2,7 @@ import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import { catalogKeywords } from '@/lib/catalogSearch';
 import {
     formatAmount as money,
     formatAmountInput,
@@ -9,8 +10,9 @@ import {
     moneySymbol,
 } from '@/lib/money';
 import { useForm } from '@inertiajs/react';
-import { CalendarDays, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, Info, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const selectClass =
     'h-10 w-full rounded-lg border border-theme-border bg-theme-surface px-3 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
@@ -29,6 +31,70 @@ function paymentStatusFor(total, paid) {
     if (t <= 0.0001 || p + 0.0001 >= t) return 'paid';
     if (p > 0.0001) return 'partial';
     return 'pending';
+}
+
+function BonusHeadingHint() {
+    const [open, setOpen] = useState(false);
+    const wrapRef = useRef(null);
+    const [pos, setPos] = useState({ top: 0, left: 0 });
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const closeOnOutside = (e) => {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        const closeOnEscape = (e) => {
+            if (e.key === 'Escape') setOpen(false);
+        };
+
+        document.addEventListener('mousedown', closeOnOutside);
+        document.addEventListener('touchstart', closeOnOutside);
+        document.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            document.removeEventListener('mousedown', closeOnOutside);
+            document.removeEventListener('touchstart', closeOnOutside);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [open]);
+
+    const toggle = () => {
+        if (!open && wrapRef.current) {
+            const r = wrapRef.current.getBoundingClientRect();
+            setPos({ top: r.bottom + 6, left: r.left });
+        }
+        setOpen((v) => !v);
+    };
+
+    return (
+        <span ref={wrapRef} className="inline-flex items-center gap-1">
+            Bonus
+            <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={open}
+                aria-label="What is bonus?"
+                className="inline-flex rounded-full p-0.5 text-theme-ink-muted hover:bg-theme-bg hover:text-theme-ink"
+            >
+                <Info className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+            {open &&
+                createPortal(
+                    <div
+                        role="tooltip"
+                        style={{ top: pos.top, left: pos.left }}
+                        className="fixed z-[80] w-64 rounded-lg border border-theme-border bg-theme-surface p-3 text-xs font-normal normal-case leading-5 tracking-normal text-theme-ink-soft shadow-card"
+                    >
+                        Extra free qty from the supplier — for example buy 12 and get 1 free.
+                        Bonus is not billed, but it still increases stock so each piece costs less.
+                    </div>,
+                    document.body,
+                )}
+        </span>
+    );
 }
 
 function PaymentStatusBadge({ status }) {
@@ -85,12 +151,18 @@ function dataFromPurchase(purchase, moneySources = []) {
             variant_id: String(item.variant_id),
             unit_id: String(item.unit_id),
             quantity: item.quantity ?? '',
-            bonus_quantity: item.bonus_quantity ?? '0',
-            bonus_unit_id: item.bonus_unit_id ? String(item.bonus_unit_id) : '',
+            bonus_quantity:
+                Number(item.bonus_quantity) > 0 ? String(item.bonus_quantity) : '',
+            bonus_unit_id: item.bonus_unit_id
+                ? String(item.bonus_unit_id)
+                : item.unit_id
+                  ? String(item.unit_id)
+                  : '',
             unit_price: item.unit_price ?? '',
             expiry_date: item.expiry_date || '',
             display_name: item.display_name || '—',
             short_code: item.short_code || '',
+            barcode: item.barcode || '',
             purchase_unit_label: item.purchase_unit_label || '—',
         })),
     };
@@ -137,7 +209,9 @@ export default function PurchaseFormDrawer({
             variants.map((v) => ({
                 value: v.id,
                 label: `${v.short_code ? `${v.short_code} — ` : ''}${v.label}`,
+                keywords: catalogKeywords(v.barcode, v.short_code),
                 meta: [
+                    v.barcode,
                     v.purchase_unit?.name || v.purchase_unit?.code,
                     v.cost_per_unit != null ? `cost ${money(v.cost_per_unit)}` : '',
                 ]
@@ -195,12 +269,15 @@ export default function PurchaseFormDrawer({
                 variant_id: String(variant.id),
                 unit_id: variant.purchase_unit_id ? String(variant.purchase_unit_id) : '',
                 quantity: '',
-                bonus_quantity: '0',
-                bonus_unit_id: variant.sale_unit_id ? String(variant.sale_unit_id) : '',
+                bonus_quantity: '',
+                bonus_unit_id: variant.purchase_unit_id
+                    ? String(variant.purchase_unit_id)
+                    : '',
                 unit_price: suggested,
                 expiry_date: '',
                 display_name: variant.label,
                 short_code: variant.short_code || '',
+                barcode: variant.barcode || '',
                 purchase_unit_label:
                     variant.purchase_unit?.code || variant.purchase_unit?.name || '—',
             },
@@ -263,15 +340,20 @@ export default function PurchaseFormDrawer({
             notes: data.notes,
             money_source_id: data.money_source_id || null,
             paid_amount: data.paid_amount === '' || data.paid_amount == null ? 0 : data.paid_amount,
-            items: data.items.map((item) => ({
-                variant_id: item.variant_id,
-                unit_id: item.unit_id,
-                quantity: item.quantity,
-                bonus_quantity: item.bonus_quantity || 0,
-                bonus_unit_id: item.bonus_unit_id || null,
-                unit_price: item.unit_price,
-                expiry_date: item.expiry_date || null,
-            })),
+            items: data.items.map((item) => {
+                const bonusQty = Number(item.bonus_quantity || 0);
+
+                return {
+                    variant_id: item.variant_id,
+                    unit_id: item.unit_id,
+                    quantity: item.quantity,
+                    bonus_quantity: bonusQty,
+                    bonus_unit_id:
+                        bonusQty > 0 ? item.bonus_unit_id || item.unit_id || null : null,
+                    unit_price: item.unit_price,
+                    expiry_date: item.expiry_date || null,
+                };
+            }),
         }));
         const url = editing
             ? route('admin.purchases.update', purchase.id)
@@ -307,7 +389,7 @@ export default function PurchaseFormDrawer({
                                 value={form.data.supplier_id}
                                 onChange={(e) => form.setData('supplier_id', e.target.value)}
                                 className={selectClass}
-                                autoFocus
+                                autoFocus={form.data.items.length === 0}
                             >
                                 <option value="">Select supplier</option>
                                 {suppliers.map((s) => (
@@ -345,19 +427,25 @@ export default function PurchaseFormDrawer({
                                 Purchase Items
                             </h3>
                             <p className="mt-1 text-sm text-theme-ink-muted">
-                                Search and select items — use the calendar icon to set expiry when
-                                needed.
+                                Search or scan a barcode to add items. Bonus is free stock and is
+                                not billed. Use the calendar icon to set expiry when needed.
                             </p>
                         </div>
 
-                        <Field label="Add item" required>
+                        <Field
+                            label="Add item"
+                            required
+                            hint="Scan a barcode and press Enter, or search by name / short code."
+                        >
                             <SearchableSelect
                                 key={pickerKey}
                                 options={catalogOptions}
                                 value={null}
                                 onChange={addFromCatalog}
-                                placeholder="Search products or variants…"
+                                placeholder="Barcode, short code, or product name"
                                 searchable
+                                asSearch
+                                autoFocus={form.data.items.length > 0}
                             />
                         </Field>
 
@@ -373,6 +461,9 @@ export default function PurchaseFormDrawer({
                                             Unit price
                                         </th>
                                         <th className="w-44 px-3 py-3 font-semibold">Quantity</th>
+                                        <th className="w-40 px-3 py-3 font-semibold">
+                                            <BonusHeadingHint />
+                                        </th>
                                         <th className="w-28 px-3 py-3 text-right font-semibold">
                                             Total
                                         </th>
@@ -383,7 +474,7 @@ export default function PurchaseFormDrawer({
                                     {form.data.items.length === 0 && (
                                         <tr>
                                             <td
-                                                colSpan={6}
+                                                colSpan={7}
                                                 className="px-6 py-10 text-center text-sm text-theme-ink-muted"
                                             >
                                                 No items yet. Use the search box above to add
@@ -410,9 +501,11 @@ export default function PurchaseFormDrawer({
                                                         {item.display_name || '—'}
                                                     </p>
                                                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                                                        {item.short_code && (
+                                                        {(item.short_code || item.barcode) && (
                                                             <span className="text-xs text-theme-ink-muted">
-                                                                {item.short_code}
+                                                                {[item.short_code, item.barcode]
+                                                                    .filter(Boolean)
+                                                                    .join(' · ')}
                                                             </span>
                                                         )}
                                                         {showExpiry && (
@@ -471,6 +564,30 @@ export default function PurchaseFormDrawer({
                                                                 )
                                                             }
                                                             className="h-10 w-24 rounded-lg border border-theme-border bg-theme-surface px-2 text-sm tabular-nums outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                                        />
+                                                        <span className="whitespace-nowrap text-sm font-medium text-theme-ink-soft">
+                                                            {item.purchase_unit_label}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={item.bonus_quantity}
+                                                            onChange={(e) =>
+                                                                setItem(
+                                                                    index,
+                                                                    'bonus_quantity',
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className="h-10 w-20 rounded-lg border border-theme-border bg-theme-surface px-2 text-sm tabular-nums outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20"
+                                                            title="Free qty — not included in the line total"
+                                                            aria-label="Bonus quantity"
                                                         />
                                                         <span className="whitespace-nowrap text-sm font-medium text-theme-ink-soft">
                                                             {item.purchase_unit_label}

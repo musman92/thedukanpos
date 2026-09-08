@@ -132,8 +132,8 @@ class PurchaseReturnService
             $purchase = Purchase::query()
                 ->with([
                     'supplier:id,name',
-                    'items.product:id,name',
-                    'items.variant:id,name,short_code',
+                    'items.product:id,name,barcode',
+                    'items.variant:id,name,short_code,barcode',
                     'items.unit:id,name,code',
                 ])
                 ->where('branch_id', $branch->id)
@@ -157,6 +157,8 @@ class PurchaseReturnService
                                 'id' => $item->id,
                                 'product_name' => $item->product?->name,
                                 'variant_name' => $item->variant?->name,
+                                'short_code' => $item->variant?->short_code,
+                                'barcode' => $item->variant?->barcode ?: $item->product?->barcode,
                                 'unit_code' => $item->unit?->code,
                                 'unit_id' => $item->unit_id,
                                 'variant_id' => $item->variant_id,
