@@ -8,7 +8,8 @@ use Illuminate\Support\ServiceProvider;
 /**
  * Template provider — rename namespace/class when copying.
  *
- * Loaded only when this addon is Active for the current tenant (runtime TBD).
+ * Routes are registered at app boot and protected per tenant by addon.active.
+ * AddonProvisionService owns install/remove migrations.
  */
 class YourAddonServiceProvider extends ServiceProvider
 {
@@ -19,7 +20,10 @@ class YourAddonServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadMigrationsFrom(dirname(__DIR__, 2).'/database/migrations');
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
         $this->registerRoutes();
         // $this->loadTranslationsFrom(...);
         // Event::listen(...);
@@ -27,14 +31,14 @@ class YourAddonServiceProvider extends ServiceProvider
 
     protected function registerRoutes(): void
     {
-        Route::middleware(['web', 'auth', 'tenancy.session'])
+        Route::middleware(['web', 'auth', 'tenancy.session', 'addon.active:your-addon'])
             ->prefix('admin')
             ->name('admin.')
             ->group(dirname(__DIR__, 2).'/routes/admin.php');
 
         $posRoutes = dirname(__DIR__, 2).'/routes/pos.php';
         if (is_file($posRoutes)) {
-            Route::middleware(['web', 'auth', 'tenancy.session'])
+            Route::middleware(['web', 'auth', 'tenancy.session', 'addon.active:your-addon'])
                 ->prefix('pos')
                 ->name('pos.')
                 ->group($posRoutes);

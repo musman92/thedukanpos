@@ -27,7 +27,6 @@ final class AppPermissions
         'users',
         'roles',
         'branches',
-        'shifts',
         'purchases',
         'purchase-returns',
         'sales-returns',
@@ -64,9 +63,9 @@ final class AppPermissions
         'customers' => ['receive-payment'],
         'money-sources' => ['transfer', 'owner-withdrawal', 'reports'],
         'purchases' => ['show'],
-            'quotations' => ['show'],
-            'orders' => ['index', 'show'],
-            'reports' => [
+        'quotations' => ['show'],
+        'orders' => ['index', 'show'],
+        'reports' => [
             'index',
             'sales',
             'products',
@@ -77,7 +76,6 @@ final class AppPermissions
             'payables',
             'gross-margin',
             'profit-loss',
-            'shifts-z',
         ],
     ];
 
@@ -97,6 +95,15 @@ final class AppPermissions
         foreach (self::CUSTOM_MODULE_ACTIONS as $module => $actions) {
             foreach ($actions as $action) {
                 $names[] = "{$module}.{$action}";
+            }
+        }
+
+        if (tenancy()->initialized) {
+            $active = array_fill_keys(TenantAddons::activeSlugs(), true);
+            foreach (AddonCatalog::all() as $manifest) {
+                if (isset($active[$manifest['slug']])) {
+                    $names = [...$names, ...$manifest['permissions']];
+                }
             }
         }
 
@@ -193,6 +200,7 @@ final class AppPermissions
 
             if ($title === 'Reports') {
                 $reports = $group;
+
                 continue;
             }
 

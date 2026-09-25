@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BranchController;
-use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CatalogMasterController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -23,24 +22,25 @@ use App\Http\Controllers\Admin\Hr\PayrollController;
 use App\Http\Controllers\Admin\ImportExportController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\InventoryStockController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\QuotationController;
+use App\Http\Controllers\Admin\RackController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReportHubController;
 use App\Http\Controllers\Admin\ReturnController;
-use App\Http\Controllers\Admin\RackController;
 use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\SerialController;
 use App\Http\Controllers\Admin\SectionController;
+use App\Http\Controllers\Admin\SerialController;
 use App\Http\Controllers\Admin\SettingController;
-use App\Http\Controllers\Admin\ShiftController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VariationController;
+use App\Http\Controllers\Platform\AddonController;
 use App\Http\Controllers\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Platform\InvoiceController as PlatformInvoiceController;
@@ -136,12 +136,6 @@ Route::middleware(['tenancy.session', 'auth'])->group(function () {
         Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
         Route::post('/customers/payments', [CustomerController::class, 'receivePayment'])->name('customers.payments.store');
-
-        Route::get('/shifts', [ShiftController::class, 'index'])->name('shifts.index');
-        Route::get('/shifts/create', [ShiftController::class, 'create'])->name('shifts.create');
-        Route::post('/shifts', [ShiftController::class, 'store'])->name('shifts.store');
-        Route::get('/shifts/{shift}', [ShiftController::class, 'show'])->name('shifts.show');
-        Route::post('/shifts/{shift}/close', [ShiftController::class, 'close'])->name('shifts.close');
 
         Route::get('/inventory/stock', [InventoryStockController::class, 'index'])->name('inventory.stock');
         Route::get('/inventory/low-stock', [InventoryStockController::class, 'lowStock'])->name('inventory.low-stock');
@@ -369,8 +363,8 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::post('/invoices', [PlatformInvoiceController::class, 'store'])->name('invoices.store');
         Route::post('/invoices/{invoice}/paid', [PlatformInvoiceController::class, 'markPaid'])->name('invoices.paid');
 
-        Route::get('/addons', [\App\Http\Controllers\Platform\AddonController::class, 'index'])->name('addons.index');
-        Route::get('/addons/{addon}', [\App\Http\Controllers\Platform\AddonController::class, 'show'])->name('addons.show');
+        Route::get('/addons', [AddonController::class, 'index'])->name('addons.index');
+        Route::get('/addons/{addon}', [AddonController::class, 'show'])->name('addons.show');
     });
 });
 

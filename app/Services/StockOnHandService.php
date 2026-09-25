@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BranchStock;
 use App\Models\Category;
+use App\Models\Product;
 use App\Support\BranchContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,7 +49,7 @@ class StockOnHandService
                 'variant.saleUnit:id,name',
             ])
             ->where('branch_id', $branch->id)
-            ->whereHas('variant.product', fn (Builder $p) => $p->where('track_stock', true))
+            ->whereHas('variant.product', fn (Builder $p) => $p->where('kind', 'goods')->where('track_stock', true))
             ->when($categoryId, function (Builder $query) use ($categoryId) {
                 $query->whereHas(
                     'variant.product',
@@ -146,7 +147,7 @@ class StockOnHandService
     {
         if ($sort === 'product') {
             $query->orderBy(
-                \App\Models\Product::query()
+                Product::query()
                     ->select('name')
                     ->whereColumn('products.id', 'branch_stocks.product_id')
                     ->limit(1),

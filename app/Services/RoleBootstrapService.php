@@ -57,13 +57,17 @@ class RoleBootstrapService
         foreach (TenantDefaultRoles::names() as $name) {
             $role = Role::findOrCreate($name, $guard);
 
+            if ($name === TenantDefaultRoles::ADMINISTRATOR) {
+                $role->givePermissionTo(AppPermissions::all());
+
+                continue;
+            }
+
             if ($role->permissions()->count() > 0) {
                 continue;
             }
 
-            if ($name === TenantDefaultRoles::ADMINISTRATOR) {
-                $role->syncPermissions(AppPermissions::all());
-            } elseif ($name === TenantDefaultRoles::MANAGER) {
+            if ($name === TenantDefaultRoles::MANAGER) {
                 $role->syncPermissions($this->managerPermissions());
             } elseif ($name === TenantDefaultRoles::CASHIER) {
                 $role->syncPermissions($this->cashierPermissions());
@@ -101,7 +105,7 @@ class RoleBootstrapService
      */
     public function cashierPermissions(): array
     {
-        return [
+        $desired = [
             'pos.index',
             'pos.checkout',
             'pos.receipt',
@@ -115,5 +119,7 @@ class RoleBootstrapService
             'sales-returns.index',
             'sales-returns.store',
         ];
+
+        return array_values(array_intersect($desired, AppPermissions::all()));
     }
 }

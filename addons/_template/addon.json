@@ -5,6 +5,11 @@
   "description": "Describe what this addon does.",
   "requires_core": ">=1.0.0",
   "provider": "Addons\\YourAddon\\Providers\\YourAddonServiceProvider",
+  "lifecycle": null,
+  "requires": [],
+  "conflicts": [],
+  "capabilities": {},
+  "slots": {},
   "permissions": [
     "your_addon.view",
     "your_addon.manage"

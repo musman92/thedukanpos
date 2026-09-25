@@ -4,6 +4,13 @@
   "version": "1.0.0",
   "description": "Optional cash drawer sessions with opening/closing counts, expected vs actual cash, and Z reports for end-of-day reconciliation.",
   "requires_core": ">=1.0.0",
+  "provider": "Addons\\Shifts\\Providers\\ShiftsServiceProvider",
+  "requires": [],
+  "conflicts": [],
+  "capabilities": {
+    "shifts.enabled": true
+  },
+  "slots": {},
   "highlights": [
     "Open and close cash drawer sessions per branch",
     "Track opening float, sales, and closing counts",
@@ -15,13 +22,16 @@
     "shifts.index",
     "shifts.store",
     "shifts.update",
-    "shifts-z.view"
+    "reports.shifts-z"
   ],
   "nav": [
     {
       "label": "Shifts",
       "route": "admin.shifts.index",
       "group": "operations",
+      "group_label": "Operations",
+      "icon": "clock",
+      "order": 100,
       "permission": "shifts.index"
     }
   ]

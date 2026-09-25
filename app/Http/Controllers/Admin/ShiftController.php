@@ -7,8 +7,8 @@ use App\Models\Branch;
 use App\Models\MoneySource;
 use App\Models\Shift;
 use App\Models\ShiftMoneySource;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
-use App\Support\TenantAddons;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -221,7 +221,7 @@ class ShiftController extends Controller
 
     private function ensureShiftsAddon(): void
     {
-        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+        if (! app(AddonRegistry::class)->capability('shifts.enabled', false)) {
             abort(404);
         }
     }

@@ -1,8 +1,17 @@
 <?php
 
+use App\Http\Middleware\EnsureAddonActive;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\InitializeTenancyByHeader;
+use App\Http\Middleware\InitializeTenancyByPathCode;
+use App\Http\Middleware\InitializeTenancyBySession;
+use App\Http\Middleware\SetInertiaRootView;
+use App\Http\Middleware\SetLocale;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,21 +27,23 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tenancy must run after the session starts and before Authenticate /
         // HandleInertiaRequests resolve Auth::user() (users live in tenant DBs).
         $middleware->prependToPriorityList(
-            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            prepend: \App\Http\Middleware\InitializeTenancyBySession::class,
+            before: AuthenticatesRequests::class,
+            prepend: InitializeTenancyBySession::class,
         );
 
         $middleware->web(append: [
-            \App\Http\Middleware\SetInertiaRootView::class,
-            \App\Http\Middleware\InitializeTenancyBySession::class,
-            \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            SetInertiaRootView::class,
+            InitializeTenancyBySession::class,
+            SetLocale::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         $middleware->alias([
-            'tenancy.session' => \App\Http\Middleware\InitializeTenancyBySession::class,
-            'tenancy.header' => \App\Http\Middleware\InitializeTenancyByHeader::class,
+            'tenancy.session' => InitializeTenancyBySession::class,
+            'tenancy.header' => InitializeTenancyByHeader::class,
+            'tenancy.path' => InitializeTenancyByPathCode::class,
+            'addon.active' => EnsureAddonActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

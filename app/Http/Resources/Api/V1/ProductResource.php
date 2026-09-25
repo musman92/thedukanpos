@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Product */
+/** @mixin Product */
 class ProductResource extends JsonResource
 {
     /**
@@ -17,6 +18,7 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type ?: 'single',
+            'kind' => $this->kind ?: 'goods',
             'short_code' => $this->short_code,
             'barcode' => $this->barcode,
             'sku' => $this->sku,

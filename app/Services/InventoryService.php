@@ -14,6 +14,8 @@ class InventoryService
 {
     public function getOrCreateStock(int $branchId, ProductVariant $variant): BranchStock
     {
+        $this->assertInventoryEnabled($variant);
+
         return BranchStock::query()->firstOrCreate(
             ['branch_id' => $branchId, 'variant_id' => $variant->id],
             [
@@ -90,7 +92,7 @@ class InventoryService
             $stock = $this->getOrCreateStock($branchId, $variant);
             $stock = BranchStock::query()->whereKey($stock->id)->lockForUpdate()->first();
 
-            if (! $allowNegative && $product?->track_stock && (float) $stock->quantity < $qtySaleUnits) {
+            if (! $allowNegative && $product?->affectsInventory() && (float) $stock->quantity < $qtySaleUnits) {
                 throw new \RuntimeException("Insufficient stock for {$variant->displayName()}. Available: {$stock->quantity}");
             }
 
@@ -232,5 +234,16 @@ class InventoryService
             'notes' => $notes,
             'user_id' => Auth::id(),
         ]);
+    }
+
+    protected function assertInventoryEnabled(ProductVariant $variant): void
+    {
+        $product = $variant->relationLoaded('product')
+            ? $variant->product
+            : Product::query()->find($variant->product_id);
+
+        if (! $product?->affectsInventory()) {
+            throw new \LogicException('This product does not track inventory.');
+        }
     }
 }

@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import SlotHost from '@/Components/Addons/SlotHost';
 import Button from '@/Components/Ui/Button';
 import ImageUploadField from '@/Components/Ui/ImageUploadField';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
@@ -679,6 +680,7 @@ export default function Edit({ settings, section = 'general', options = {} }) {
                     </Button>
                 </div>
             </form>
+            <SlotHost name="settings.form" />
         </AdminLayout>
     );
 }

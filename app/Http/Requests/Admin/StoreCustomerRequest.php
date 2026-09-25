@@ -26,6 +26,7 @@ class StoreCustomerRequest extends FormRequest
             'address' => ['nullable', 'string'],
             'opening_balance' => ['nullable', 'numeric'],
             'is_active' => ['sometimes', 'boolean'],
+            'addons' => ['sometimes', 'array'],
         ];
     }
 
@@ -71,6 +72,7 @@ class StoreCustomerRequest extends FormRequest
             'address' => $this->input('address'),
             'opening_balance' => (float) $this->input('opening_balance', 0),
             'is_active' => $this->boolean('is_active', true),
+            'addons' => is_array($this->input('addons')) ? $this->input('addons') : [],
         ];
     }
 }

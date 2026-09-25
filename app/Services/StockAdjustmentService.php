@@ -100,7 +100,7 @@ class StockAdjustmentService
                 'purchaseUnit:id,name',
             ])
             ->where('is_active', true)
-            ->whereHas('product', fn (Builder $p) => $p->where('track_stock', true))
+            ->whereHas('product', fn (Builder $p) => $p->where('kind', 'goods')->where('track_stock', true))
             ->orderBy('short_code')
             ->get()
             ->map(function (ProductVariant $v) {
@@ -137,7 +137,7 @@ class StockAdjustmentService
             ->with(['product.purchaseUnit', 'saleUnit', 'purchaseUnit'])
             ->findOrFail($variantId);
 
-        if (! $variant->product?->track_stock) {
+        if (! $variant->product?->affectsInventory()) {
             throw ValidationException::withMessages([
                 'variant_id' => 'This product does not track stock.',
             ]);
@@ -280,7 +280,7 @@ class StockAdjustmentService
     protected function resolveSignedQty(int $branchId, array $data): float
     {
         $variant = ProductVariant::query()->with('product')->find((int) $data['variant_id']);
-        if (! $variant || ! $variant->product?->track_stock) {
+        if (! $variant || ! $variant->product?->affectsInventory()) {
             throw ValidationException::withMessages([
                 'variant_id' => 'Select a stock-tracked product.',
             ]);

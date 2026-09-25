@@ -11,7 +11,7 @@ Core POS/admin must keep working with **zero addons active**. An addon may be in
 | **Platform admin** | Yes — on the tenant **Show** screen → **Addons** tab |
 | **Tenant (company) admin** | **No** — they only *use* addons that platform installed |
 
-> Status: catalog + platform Install/Remove UI are in place (central `tenant_addons` table). Loading active addon providers inside the tenant app, migrations on install, and Installments features come next.
+> Status: catalog + platform Install/Remove UI, guarded addon providers/routes, install/remove tenant migrations, merged nav/capabilities/slots, Shifts, and Bookings are in place. Installments remains a scaffold.
 
 ---
 
@@ -51,11 +51,11 @@ Discover (scan addons/*/addon.json)
 
 There is **no** tenant-facing “Plugins” screen for install/remove.
 
-**Install** (platform) — marks the addon installed/active for that company on the central DB. Later: run that addon’s tenant migrations inside the company database.
+**Install** (platform) — validates `requires` / `conflicts`, runs the addon’s migrations inside the company database, then marks it active centrally.
 
-**Remove** (platform) — removes the provision record. Later: drop addon tables / clear addon settings for that tenant. Core tables stay untouched.
+**Remove** (platform) — refuses removal while a dependent addon is active, rolls back the addon migration path, then removes the provision record. Core tables stay untouched.
 
-**Use** (tenant) — once runtime loading exists, only addons with an active `tenant_addons` row boot routes/nav/listeners for that company.
+**Use** (tenant) — providers register guarded routes at app boot (Laravel matches routes before tenant middleware). `addon.active:{slug}` makes inactive routes 404; nav, slots, and capabilities are merged only for active tenant rows.
 
 ---
 

@@ -286,7 +286,7 @@ class PurchaseReturnService
 
         return DB::transaction(function () use ($data, $branch) {
             $purchase = Purchase::query()
-                ->with('items.variant')
+                ->with('items.variant.product')
                 ->where('branch_id', $branch->id)
                 ->lockForUpdate()
                 ->findOrFail($data['purchase_id']);
@@ -335,7 +335,7 @@ class PurchaseReturnService
                 }
 
                 $variant = $purchaseItem->variant
-                    ?? ProductVariant::query()->findOrFail($purchaseItem->variant_id);
+                    ?? ProductVariant::query()->with('product')->findOrFail($purchaseItem->variant_id);
 
                 $unitId = (int) $purchaseItem->unit_id;
                 $qtySale = $variant->toSaleQuantity($qty, $unitId);
@@ -355,14 +355,16 @@ class PurchaseReturnService
                     'line_total' => $lineTotal,
                 ]);
 
-                $this->inventory->deduct(
-                    $branch->id,
-                    $variant,
-                    $qtySale,
-                    $item,
-                    "Purchase return {$doc->number}",
-                    'purchase_return',
-                );
+                if ($variant->product?->affectsInventory()) {
+                    $this->inventory->deduct(
+                        $branch->id,
+                        $variant,
+                        $qtySale,
+                        $item,
+                        "Purchase return {$doc->number}",
+                        'purchase_return',
+                    );
+                }
 
                 $purchaseItem->update([
                     'quantity_returned' => round((float) $purchaseItem->quantity_returned + $qty, 4),
@@ -426,7 +428,7 @@ class PurchaseReturnService
 
             $branch = BranchContext::ensure();
             $purchase = Purchase::query()
-                ->with('items.variant')
+                ->with('items.variant.product')
                 ->where('branch_id', $branch->id)
                 ->lockForUpdate()
                 ->findOrFail($doc->purchase_id);
@@ -508,7 +510,7 @@ class PurchaseReturnService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array{purchase_item_id:int, quantity:float|int|string}>  $lines
+     * @param  Collection<int, array{purchase_item_id:int, quantity:float|int|string}>  $lines
      */
     protected function applyLines(
         PurchaseReturn $doc,
@@ -536,7 +538,7 @@ class PurchaseReturnService
             }
 
             $variant = $purchaseItem->variant
-                ?? ProductVariant::query()->findOrFail($purchaseItem->variant_id);
+                ?? ProductVariant::query()->with('product')->findOrFail($purchaseItem->variant_id);
 
             $unitId = (int) $purchaseItem->unit_id;
             $qtySale = $variant->toSaleQuantity($qty, $unitId);
@@ -556,14 +558,16 @@ class PurchaseReturnService
                 'line_total' => $lineTotal,
             ]);
 
-            $this->inventory->deduct(
-                $branchId,
-                $variant,
-                $qtySale,
-                $item,
-                "Purchase return {$doc->number}",
-                'purchase_return',
-            );
+            if ($variant->product?->affectsInventory()) {
+                $this->inventory->deduct(
+                    $branchId,
+                    $variant,
+                    $qtySale,
+                    $item,
+                    "Purchase return {$doc->number}",
+                    'purchase_return',
+                );
+            }
 
             $purchaseItem->update([
                 'quantity_returned' => round((float) $purchaseItem->quantity_returned + $qty, 4),
@@ -577,7 +581,7 @@ class PurchaseReturnService
 
     protected function reverseEffects(PurchaseReturn $doc): void
     {
-        $doc->loadMissing(['items.variant', 'purchase']);
+        $doc->loadMissing(['items.variant.product', 'purchase']);
 
         $purchase = Purchase::query()
             ->with('items')
@@ -588,10 +592,10 @@ class PurchaseReturnService
 
         foreach ($doc->items as $item) {
             $variant = $item->variant
-                ?? ProductVariant::query()->findOrFail($item->variant_id);
+                ?? ProductVariant::query()->with('product')->findOrFail($item->variant_id);
             $qtySale = (float) $item->quantity_in_sale_unit;
 
-            if ($qtySale > 0.0001) {
+            if ($qtySale > 0.0001 && $variant->product?->affectsInventory()) {
                 $this->inventory->receive(
                     branchId: (int) $doc->branch_id,
                     variant: $variant,

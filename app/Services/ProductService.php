@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ProductSaved;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -103,17 +104,23 @@ class ProductService
         $this->assertVariantUniqueness($variants);
         $this->assertBarcodesAvailable($variants);
 
-        return DB::transaction(function () use ($productData, $variants, $branchId, $payload) {
+        $product = DB::transaction(function () use ($productData, $variants, $branchId, $payload) {
             if (($payload['image'] ?? null) instanceof UploadedFile) {
                 $productData['image'] = $this->images->storeCompressed($payload['image'], 'products');
             }
 
             $product = Product::query()->create($productData);
             $synced = $this->syncVariants($product, $variants, $branchId);
-            $this->applyOpeningStock($synced, $variants, $branchId);
+            if ($product->affectsInventory()) {
+                $this->applyOpeningStock($synced, $variants, $branchId);
+            }
 
             return $this->loadForBranch($product->fresh(), $branchId);
         });
+
+        ProductSaved::dispatch($product, $payload['addons'] ?? []);
+
+        return $product;
     }
 
     /**
@@ -131,7 +138,7 @@ class ProductService
         $this->assertVariantUniqueness($variants);
         $this->assertBarcodesAvailable($variants);
 
-        return DB::transaction(function () use ($product, $productData, $variants, $branchId, $payload) {
+        $product = DB::transaction(function () use ($product, $productData, $variants, $branchId, $payload) {
             $imagePath = $product->image;
 
             if (! empty($payload['remove_image'])) {
@@ -150,6 +157,10 @@ class ProductService
 
             return $this->loadForBranch($product->fresh(), $branchId);
         });
+
+        ProductSaved::dispatch($product, $payload['addons'] ?? []);
+
+        return $product;
     }
 
     /**
@@ -179,6 +190,7 @@ class ProductService
             $copy = Product::query()->create([
                 'name' => $this->duplicateName($product->name),
                 'type' => $product->type ?: 'single',
+                'kind' => $product->kind ?: 'goods',
                 'short_code' => $newCode,
                 'barcode' => null,
                 'sku' => null,
@@ -436,6 +448,16 @@ class ProductService
             ? $productData['min_qty_alert']
             : null;
 
+        if (($productData['kind'] ?? $existing?->kind ?? 'goods') === 'service') {
+            $productData['track_stock'] = false;
+            $productData['min_qty_alert'] = null;
+            foreach ($variants as &$variant) {
+                $variant['track_serial'] = false;
+                $variant['opening_stock'] = null;
+            }
+            unset($variant);
+        }
+
         return [$productData, array_values($variants)];
     }
 
@@ -613,7 +635,7 @@ class ProductService
         foreach ($synced as $index => $variant) {
             $row = $rows[$index] ?? [];
             $qty = (float) ($row['opening_stock'] ?? 0);
-            if ($qty <= 0) {
+            if ($qty <= 0 || ! $variant->product?->affectsInventory()) {
                 continue;
             }
 

@@ -5,6 +5,11 @@
   "description": "Sell on installment plans and collect scheduled payments over time — without changing how core POS works when the addon is off.",
   "requires_core": ">=1.0.0",
   "provider": "Addons\\Installments\\Providers\\InstallmentsServiceProvider",
+  "lifecycle": null,
+  "requires": [],
+  "conflicts": [],
+  "capabilities": {},
+  "slots": {},
   "highlights": [
     "Offer payment plans instead of full payment upfront",
     "Track scheduled collections per customer",

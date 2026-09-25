@@ -27,14 +27,14 @@ export default function Login({ status }) {
             <Head title={t('auth.log_in')} />
 
             <div className="mb-6">
-                <h1 className="font-display text-xl tracking-tight text-stone-900">
+                <h1 className="font-display text-xl tracking-tight text-theme-ink">
                     {t('auth.sign_in')}
                 </h1>
-                <p className="mt-1 text-sm text-stone-500">{t('auth.login_hint')}</p>
+                <p className="mt-1 text-sm text-theme-ink-soft">{t('auth.login_hint')}</p>
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="mb-4 text-sm font-medium text-theme-success">
                     {status}
                 </div>
             )}
@@ -54,7 +54,7 @@ export default function Login({ status }) {
                         onChange={(e) => setData('login', e.target.value)}
                     />
                     <InputError message={errors.login} className="mt-2" />
-                    <p className="mt-1 text-xs text-gray-500">{t('auth.example')}</p>
+                    <p className="mt-1 text-xs text-theme-ink-muted">{t('auth.example')}</p>
                 </div>
 
                 <div className="mt-4">
@@ -80,7 +80,7 @@ export default function Login({ status }) {
                                 setData('remember', e.target.checked)
                             }
                         />
-                        <span className="ms-2 text-sm text-gray-600">
+                        <span className="ms-2 text-sm text-theme-ink-soft">
                             {t('auth.remember')}
                         </span>
                     </label>

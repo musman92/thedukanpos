@@ -34,14 +34,6 @@ const modules = [
         match: ['admin.dashboard'],
     },
     {
-        id: 'shifts',
-        type: 'link',
-        labelKey: 'nav.shifts',
-        icon: Clock3,
-        href: 'admin.shifts.index',
-        match: ['admin.shifts'],
-    },
-    {
         id: 'catalog',
         labelKey: 'nav.catalog',
         icon: Package,
@@ -158,6 +150,52 @@ const modules = [
     },
 ];
 
+const addonIcons = {
+    clock: Clock3,
+    package: Package,
+    receipt: Receipt,
+    settings: Settings,
+    users: UsersRound,
+};
+
+function mergeAddonNav(coreModules, items = []) {
+    const merged = coreModules.map((mod) => ({
+        ...mod,
+        items: mod.items ? [...mod.items] : undefined,
+        match: [...mod.match],
+    }));
+
+    items.forEach((item) => {
+        const groupId = item.group || 'addons';
+        let group = merged.find((mod) => mod.id === groupId && mod.type !== 'link');
+        const navItem = {
+            href: item.route,
+            label: item.label,
+            permission: item.permission,
+        };
+
+        if (group) {
+            if (!group.items.some((existing) => existing.href === item.route)) {
+                group.items.push(navItem);
+                group.match = [...new Set([...group.match, item.route.replace(/\.index$/, '')])];
+            }
+            return;
+        }
+
+        group = {
+            id: groupId,
+            label: item.group_label || groupId.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            icon: addonIcons[item.icon] || Boxes,
+            match: [item.route.replace(/\.index$/, '')],
+            items: [navItem],
+            order: item.order || 500,
+        };
+        merged.push(group);
+    });
+
+    return merged;
+}
+
 function isItemActive(current, href) {
     if (!current) return false;
     if (current === href) return true;
@@ -175,7 +213,7 @@ function moduleMatches(current, mod) {
 function NavLink({ mod, current, t, collapsed = false }) {
     const Icon = mod.icon;
     const active = moduleMatches(current, mod);
-    const label = t(mod.labelKey);
+    const label = mod.label || t(mod.labelKey);
 
     return (
         <Link
@@ -192,7 +230,7 @@ function NavLink({ mod, current, t, collapsed = false }) {
 function NavGroup({ mod, current, open, onToggle, t, collapsed = false }) {
     const Icon = mod.icon;
     const groupActive = moduleMatches(current, mod);
-    const label = t(mod.labelKey);
+    const label = mod.label || t(mod.labelKey);
 
     return (
         <div>
@@ -222,7 +260,7 @@ function NavGroup({ mod, current, open, onToggle, t, collapsed = false }) {
                                     href={route(item.href)}
                                     className={`dp-nav-sub ${active ? 'dp-nav-sub-active' : ''}`}
                                 >
-                                    {t(item.labelKey)}
+                                    {item.label || t(item.labelKey)}
                                 </Link>
                             </li>
                         );
@@ -255,10 +293,11 @@ export default function AdminLayout({
         () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
     );
     const iconRail = collapsed && isDesktop;
+    const showPos = (addons?.capabilities?.checkout?.surface || 'pos') !== 'orders';
 
     const visibleModules = useMemo(
-        () => modules.filter((mod) => mod.id !== 'shifts' || addons?.shifts),
-        [addons?.shifts],
+        () => mergeAddonNav(modules, addons?.nav),
+        [addons?.nav],
     );
 
     const activeId = useMemo(() => {
@@ -435,7 +474,7 @@ export default function AdminLayout({
             </div>
 
             <nav
-                className="dp-mobile-dock fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-theme-border bg-theme-surface/95 px-2 pt-1.5 backdrop-blur-xl lg:hidden"
+                className={`dp-mobile-dock fixed inset-x-0 bottom-0 z-30 grid ${showPos ? 'grid-cols-4' : 'grid-cols-3'} border-t border-theme-border bg-theme-surface/95 px-2 pt-1.5 backdrop-blur-xl lg:hidden`}
                 aria-label="Primary navigation"
             >
                 <Link
@@ -445,10 +484,10 @@ export default function AdminLayout({
                     <LayoutDashboard />
                     <span>{t('nav.dashboard')}</span>
                 </Link>
-                <a href="/pos">
+                {showPos && <a href="/pos">
                     <Store />
                     <span>POS</span>
-                </a>
+                </a>}
                 <Link
                     href={route('admin.orders.index')}
                     className={moduleMatches(current, modules.find((mod) => mod.id === 'orders')) ? 'active' : ''}

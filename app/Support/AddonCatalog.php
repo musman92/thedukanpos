@@ -17,8 +17,13 @@ final class AddonCatalog
      *   requires_core: string|null,
      *   highlights: list<string>,
      *   provider: string|null,
+     *   lifecycle: string|null,
      *   permissions: list<string>,
      *   nav: list<array<string, mixed>>,
+     *   requires: list<string>,
+     *   conflicts: list<string>,
+     *   capabilities: array<string, mixed>,
+     *   slots: array<string, list<array<string, mixed>>>,
      *   path: string
      * }>
      */
@@ -151,11 +156,31 @@ final class AddonCatalog
             'requires_core' => isset($raw['requires_core']) ? (string) $raw['requires_core'] : null,
             'highlights' => $highlights,
             'provider' => isset($raw['provider']) ? (string) $raw['provider'] : null,
+            'lifecycle' => isset($raw['lifecycle']) ? (string) $raw['lifecycle'] : null,
             'permissions' => array_values(array_filter(
                 array_map('strval', $raw['permissions'] ?? []),
             )),
             'nav' => is_array($raw['nav'] ?? null) ? array_values($raw['nav']) : [],
+            'requires' => self::slugs($raw['requires'] ?? []),
+            'conflicts' => self::slugs($raw['conflicts'] ?? []),
+            'capabilities' => is_array($raw['capabilities'] ?? null) ? $raw['capabilities'] : [],
+            'slots' => is_array($raw['slots'] ?? null) ? $raw['slots'] : [],
             'path' => $dir,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function slugs(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($item) => strtolower(trim((string) $item)),
+            $value,
+        ))));
     }
 }

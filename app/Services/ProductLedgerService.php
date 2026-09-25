@@ -89,6 +89,7 @@ class ProductLedgerService
     protected function productOptions(): Collection
     {
         return Product::query()
+            ->where('kind', 'goods')
             ->where('track_stock', true)
             ->where('is_active', true)
             ->orderBy('name')

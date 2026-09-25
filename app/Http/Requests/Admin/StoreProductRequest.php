@@ -26,6 +26,7 @@ class StoreProductRequest extends FormRequest
 
         $rules = [
             'type' => ['required', Rule::in(['single', 'variant'])],
+            'kind' => ['sometimes', Rule::in(['goods', 'service'])],
             'name' => ['required', 'string', 'max:255'],
             'short_code' => ['nullable', 'string', 'max:50'],
             'brand_id' => ['nullable', 'exists:brands,id'],
@@ -37,6 +38,7 @@ class StoreProductRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'notes' => ['nullable', 'string'],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'addons' => ['sometimes', 'array'],
             'image' => [
                 'nullable',
                 'image',
@@ -190,17 +192,19 @@ class StoreProductRequest extends FormRequest
     public function payload(): array
     {
         $type = $this->input('type') === 'variant' ? 'variant' : 'single';
+        $kind = $this->input('kind') === 'service' ? 'service' : 'goods';
 
         $product = [
             'name' => trim((string) $this->input('name')),
             'type' => $type,
+            'kind' => $kind,
             'short_code' => $this->input('short_code'),
             'brand_id' => $this->input('brand_id') ?: null,
             'category_id' => $this->input('category_id') ?: null,
             'variation_id' => $type === 'variant' ? ($this->input('variation_id') ?: null) : null,
             'tax_id' => $this->input('tax_id') ?: null,
             'min_qty_alert' => $this->input('min_qty_alert'),
-            'track_stock' => $this->boolean('track_stock', true),
+            'track_stock' => $kind === 'goods' && $this->boolean('track_stock', true),
             'is_active' => $this->boolean('is_active', true),
             'notes' => $this->input('notes') ?: null,
             'sku' => null,
@@ -251,6 +255,7 @@ class StoreProductRequest extends FormRequest
             'variants' => $variants,
             'branch_id' => $this->filled('branch_id') ? (int) $this->input('branch_id') : null,
             'image' => $this->file('image'),
+            'addons' => is_array($this->input('addons')) ? $this->input('addons') : [],
         ];
     }
 }

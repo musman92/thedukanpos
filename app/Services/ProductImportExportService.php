@@ -12,7 +12,7 @@ use App\Models\Variation;
 use App\Models\VariationOption;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -33,6 +33,7 @@ class ProductImportExportService
         'product_code',
         'name',
         'type',
+        'kind',
         'brand',
         'category',
         'tax',
@@ -72,6 +73,7 @@ class ProductImportExportService
             'product_code' => 'P01',
             'name' => 'Mineral Water',
             'type' => 'single',
+            'kind' => 'goods',
             'brand' => 'Local',
             'category' => 'Beverages',
             'tax' => 'GST',
@@ -92,6 +94,7 @@ class ProductImportExportService
             'product_code' => 'P02',
             'name' => 'Pepsi',
             'type' => 'variant',
+            'kind' => 'goods',
             'brand' => 'Pepsi',
             'category' => 'Beverages',
             'tax' => 'GST',
@@ -215,6 +218,7 @@ class ProductImportExportService
                         $product->short_code,
                         $product->name,
                         $type,
+                        $product->kind ?: 'goods',
                         $product->brand?->name,
                         $product->category?->name,
                         $product->tax?->code,
@@ -291,7 +295,7 @@ class ProductImportExportService
     {
         $sheet->setTitle($title);
         $sheet->fromArray($headers, null, 'A1');
-        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $lastCol = Coordinate::stringFromColumnIndex(count($headers));
         $sheet->getStyle('A1:'.$lastCol.'1')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => [
@@ -501,6 +505,8 @@ class ProductImportExportService
 
                 $type = strtolower(trim((string) ($row['type'] ?? 'single')));
                 $type = $type === 'variant' ? 'variant' : 'single';
+                $kind = strtolower(trim((string) ($row['kind'] ?? 'goods')));
+                $kind = $kind === 'service' ? 'service' : 'goods';
 
                 $purchaseUnit = $this->resolveUnit($row['purchase_unit'] ?? 'pcs');
                 $saleUnit = $this->resolveUnit($row['sale_unit'] ?? 'pcs') ?? $purchaseUnit;
@@ -549,6 +555,7 @@ class ProductImportExportService
                 $productAttrs = [
                     'name' => $name,
                     'type' => $type,
+                    'kind' => $kind,
                     'short_code' => $code,
                     'barcode' => ($row['barcode'] ?? '') !== '' ? $row['barcode'] : null,
                     'brand_id' => $brandId,
@@ -561,7 +568,7 @@ class ProductImportExportService
                     'sale_price' => (float) ($row['sale_price'] ?? 0),
                     'cost_per_unit' => (float) ($row['purchase_price'] ?? 0),
                     'min_qty_alert' => ($row['min_qty_alert'] ?? '') !== '' ? (float) $row['min_qty_alert'] : null,
-                    'track_stock' => $this->toBool($row['track_stock'] ?? true, true),
+                    'track_stock' => $kind === 'goods' && $this->toBool($row['track_stock'] ?? true, true),
                     'is_active' => $this->toBool($row['is_active'] ?? true, true),
                     'notes' => ($row['notes'] ?? '') !== '' ? $row['notes'] : null,
                 ];
@@ -581,6 +588,7 @@ class ProductImportExportService
 
                 if ($type === 'single') {
                     $this->syncSingleVariant($product, $row, $purchaseUnit->id, $saleUnit->id);
+
                     continue;
                 }
 

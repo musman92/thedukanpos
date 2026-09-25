@@ -1,0 +1,21 @@
+---
+description: Keep optional addons isolated, composable, and safe with zero or many active packs
+alwaysApply: true
+---
+
+# Addon architecture
+
+- Core must work with zero active addons.
+- Only the runtime loader/middleware may check an addon slug.
+- Core screens render named additive slots; never add `if (addons.foo)`.
+- Addons may import core contracts/events. Addon A must not import Addon B.
+- Addon routes use `addon.active:{slug}`.
+- Addon tables, settings, permissions, routes, and page names are namespaced.
+- Addon writes belong in services shared by thin Admin/API controllers.
+- Addon UI reuses core `Components/Ui` primitives and `theme-*` / `dp-*` tokens; never hardcode palette colors or invent CSS class names.
+- Addon migrations live under `addons/{slug}/database/migrations` and run only through `AddonProvisionService`.
+- Use manifest `requires` and `conflicts`; reject conflicts before migrations.
+- Additive registrations (nav, fields, reports) all render in deterministic `order`.
+- Exclusive capabilities must have a core merge policy; never use “last provider wins.”
+- Business rules shared across niches (stock tracking, product kind) belong in core.
+- Existing core records referenced by addons must remain valid when the addon is removed.

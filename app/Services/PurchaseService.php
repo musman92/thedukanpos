@@ -305,7 +305,7 @@ class PurchaseService
                     'expiry_date' => $row['expiry_date'] ?? null,
                 ]);
 
-                if ($totalInSale > 0) {
+                if ($totalInSale > 0 && $variant->product?->affectsInventory()) {
                     $this->inventory->receive(
                         branchId: $branch->id,
                         variant: $variant,
@@ -498,7 +498,7 @@ class PurchaseService
                     'expiry_date' => $row['expiry_date'] ?? null,
                 ]);
 
-                if ($totalInSale > 0) {
+                if ($totalInSale > 0 && $variant->product?->affectsInventory()) {
                     $this->inventory->receive(
                         branchId: $branch->id,
                         variant: $variant,
@@ -678,7 +678,11 @@ class PurchaseService
 
         foreach ($purchase->items as $item) {
             $qtySale = (float) $item->quantity_in_sale_unit;
-            if ($qtySale <= 0.0001 || ! $item->variant) {
+            if (
+                $qtySale <= 0.0001
+                || ! $item->variant
+                || ! $item->variant->product?->affectsInventory()
+            ) {
                 continue;
             }
 

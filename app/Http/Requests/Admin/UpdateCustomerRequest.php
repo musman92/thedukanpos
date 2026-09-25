@@ -25,6 +25,7 @@ class UpdateCustomerRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
+            'addons' => ['sometimes', 'array'],
         ];
     }
 
@@ -74,6 +75,7 @@ class UpdateCustomerRequest extends FormRequest
             'email' => $this->input('email'),
             'address' => $this->input('address'),
             'is_active' => $this->boolean('is_active'),
+            'addons' => is_array($this->input('addons')) ? $this->input('addons') : [],
         ];
     }
 }

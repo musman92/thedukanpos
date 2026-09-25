@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CustomerSaved;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -81,7 +82,7 @@ class CustomerService
 
         $opening = round((float) ($data['opening_balance'] ?? 0), 4);
 
-        return Customer::query()->create([
+        $customer = Customer::query()->create([
             'name' => $name,
             'code' => $code,
             'phone' => $this->nullableString($data['phone'] ?? null),
@@ -90,6 +91,10 @@ class CustomerService
             'balance' => $opening,
             'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         ]);
+
+        CustomerSaved::dispatch($customer, $data['addons'] ?? []);
+
+        return $customer;
     }
 
     /**
@@ -105,7 +110,10 @@ class CustomerService
                 'is_active' => true,
             ]);
 
-            return $customer->refresh();
+            $customer = $customer->refresh();
+            CustomerSaved::dispatch($customer, $data['addons'] ?? []);
+
+            return $customer;
         }
 
         $name = trim((string) $data['name']);
@@ -126,7 +134,10 @@ class CustomerService
             'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $customer->is_active,
         ]);
 
-        return $customer->refresh();
+        $customer = $customer->refresh();
+        CustomerSaved::dispatch($customer, $data['addons'] ?? []);
+
+        return $customer;
     }
 
     public function delete(Customer $customer): void

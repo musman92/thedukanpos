@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class PlatformUser extends Authenticatable
 {
-    use Notifiable;
+    use CentralConnection, Notifiable;
 
     protected $fillable = ['name', 'email', 'password'];
 

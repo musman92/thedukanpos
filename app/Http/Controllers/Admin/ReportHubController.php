@@ -17,8 +17,8 @@ use App\Models\SupplierPayment;
 use App\Services\AccountStatementService;
 use App\Services\MoneySourceTxnReportService;
 use App\Services\ReportPdfService;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
-use App\Support\TenantAddons;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -812,7 +812,7 @@ class ReportHubController extends Controller
 
     public function shiftsZ(Request $request): Response|HttpResponse
     {
-        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+        if (! app(AddonRegistry::class)->capability('shifts.enabled', false)) {
             abort(404);
         }
 

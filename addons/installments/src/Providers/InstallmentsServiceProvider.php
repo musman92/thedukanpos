@@ -8,8 +8,8 @@ use Illuminate\Support\ServiceProvider;
 /**
  * Installments addon bootstrap.
  *
- * Loaded only when this addon is Active for the current tenant (Addon Manager TBD).
- * Do not register heavy feature logic here until product decisions are locked.
+ * Routes are registered at app boot and protected per tenant by addon.active.
+ * Migrations are owned by AddonProvisionService, not normal tenant:migrate.
  */
 class InstallmentsServiceProvider extends ServiceProvider
 {
@@ -20,22 +20,25 @@ class InstallmentsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
         $base = dirname(__DIR__, 2);
 
-        $this->loadMigrationsFrom($base.'/database/migrations');
         $this->registerRoutes($base);
     }
 
     protected function registerRoutes(string $base): void
     {
-        Route::middleware(['web', 'auth', 'tenancy.session'])
+        Route::middleware(['web', 'auth', 'tenancy.session', 'addon.active:installments'])
             ->prefix('admin')
             ->name('admin.')
             ->group($base.'/routes/admin.php');
 
         $posRoutes = $base.'/routes/pos.php';
         if (is_file($posRoutes)) {
-            Route::middleware(['web', 'auth', 'tenancy.session'])
+            Route::middleware(['web', 'auth', 'tenancy.session', 'addon.active:installments'])
                 ->prefix('pos')
                 ->name('pos.')
                 ->group($posRoutes);

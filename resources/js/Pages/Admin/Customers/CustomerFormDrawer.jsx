@@ -1,6 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field } from '@/Components/Ui/Input';
+import SlotHost from '@/Components/Addons/SlotHost';
 import { formatAmount } from '@/lib/money';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -13,6 +14,7 @@ const emptyData = () => ({
     address: '',
     opening_balance: '',
     is_active: true,
+    addons: {},
 });
 
 export default function CustomerFormDrawer({ open, customer = null, onClose }) {
@@ -36,6 +38,7 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                 address: customer.address || '',
                 opening_balance: '',
                 is_active: !!customer.is_active,
+                addons: {},
             });
         } else {
             form.setData(emptyData());
@@ -173,6 +176,13 @@ export default function CustomerFormDrawer({ open, customer = null, onClose }) {
                             System customer used as the POS default. It cannot be deleted or renamed.
                         </p>
                     )}
+                    <SlotHost
+                        name="customer.form"
+                        data={form.data}
+                        setData={form.setData}
+                        errors={form.errors}
+                        customer={customer}
+                    />
                 </div>
 
                 <div className="mt-auto flex justify-end gap-2 border-t border-theme-border pt-5">

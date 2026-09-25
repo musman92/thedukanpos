@@ -15,6 +15,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DashboardMetrics
@@ -328,7 +329,10 @@ class DashboardMetrics
                 'variant.saleUnit:id,name',
             ])
             ->where('branch_id', $branchId)
-            ->whereHas('variant.product', fn (Builder $p) => $p->where('track_stock', true)->where('min_qty_alert', '>', 0))
+            ->whereHas(
+                'variant.product',
+                fn (Builder $p) => $p->where('kind', 'goods')->where('track_stock', true)->where('min_qty_alert', '>', 0),
+            )
             ->whereRaw(
                 'branch_stocks.quantity <= (
                     select products.min_qty_alert
@@ -407,7 +411,7 @@ class DashboardMetrics
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, int|string>  $saleIds
+     * @param  Collection<int, int|string>  $saleIds
      */
     private static function costOfGoodsForSales($saleIds): float
     {
@@ -573,7 +577,7 @@ class DashboardMetrics
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<string, mixed>  $byDay
+     * @param  Collection<string, mixed>  $byDay
      * @return array{labels: list<string>, dates: list<string>}&array<string, list<float>>
      */
     private static function fillDailySeries(string $startDate, string $endDate, $byDay, string $valueKey): array

@@ -133,7 +133,7 @@ class StockDamageService
                 'saleUnit:id,name',
             ])
             ->where('is_active', true)
-            ->whereHas('product', fn (Builder $p) => $p->where('track_stock', true))
+            ->whereHas('product', fn (Builder $p) => $p->where('kind', 'goods')->where('track_stock', true))
             ->orderBy('short_code')
             ->get()
             ->map(function (ProductVariant $v) use ($stocks) {

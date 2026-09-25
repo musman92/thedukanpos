@@ -1,0 +1,54 @@
+{
+  "slug": "bookings",
+  "name": "Bookings",
+  "version": "1.0.0",
+  "description": "Public service booking, business hours, capacity, calendar sync, and order conversion.",
+  "requires_core": ">=1.0.0",
+  "provider": "Addons\\Bookings\\Providers\\BookingsServiceProvider",
+  "lifecycle": "Addons\\Bookings\\Support\\BookingsLifecycle",
+  "requires": [],
+  "conflicts": [],
+  "highlights": [
+    "Public service booking link",
+    "Business hours and configurable concurrent capacity",
+    "Optional Google Calendar synchronization",
+    "Convert confirmed bookings into orders"
+  ],
+  "permissions": [
+    "bookings.view",
+    "bookings.manage",
+    "bookings.settings"
+  ],
+  "capabilities": {
+    "bookings.enabled": true,
+    "checkout.surface": "orders"
+  },
+  "slots": {
+    "product.form": [
+      {
+        "component": "bookings/ProductForm",
+        "order": 100
+      }
+    ]
+  },
+  "nav": [
+    {
+      "label": "Bookings",
+      "route": "admin.bookings.index",
+      "group": "services",
+      "group_label": "Services",
+      "icon": "clock",
+      "order": 200,
+      "permission": "bookings.view"
+    },
+    {
+      "label": "Booking settings",
+      "route": "admin.bookings.settings.edit",
+      "group": "services",
+      "group_label": "Services",
+      "icon": "settings",
+      "order": 210,
+      "permission": "bookings.settings"
+    }
+  ]
+}

@@ -4,9 +4,10 @@ namespace App\Http\Middleware;
 
 use App\Models\Branch;
 use App\Models\Shift;
+use App\Services\SettingService;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
 use App\Support\Locale;
-use App\Support\TenantAddons;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -98,7 +99,7 @@ class HandleInertiaRequests extends Middleware
                     ->get(['id', 'code', 'name']);
             },
             'openShift' => function () {
-                if (! tenancy()->initialized || ! TenantAddons::has(TenantAddons::SHIFTS)) {
+                if (! tenancy()->initialized || ! app(AddonRegistry::class)->capability('shifts.enabled', false)) {
                     return null;
                 }
 
@@ -125,14 +126,25 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 try {
-                    return app(\App\Services\SettingService::class)->publicConfig();
+                    return app(SettingService::class)->publicConfig();
                 } catch (\Throwable) {
                     return [
                         'list_page_limit' => company_page_limit(),
                     ];
                 }
             },
-            'addons' => fn () => tenancy()->initialized ? TenantAddons::flags() : [],
+            'addons' => function () {
+                if (! tenancy()->initialized) {
+                    return [
+                        'active_slugs' => [],
+                        'nav' => [],
+                        'capabilities' => [],
+                        'slots' => [],
+                    ];
+                }
+
+                return app(AddonRegistry::class)->shared();
+            },
         ];
     }
 }

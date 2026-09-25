@@ -33,7 +33,9 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
-            "Addons\\Installments\\": "addons/installments/src/"
+            "Addons\\Installments\\": "addons/installments/src/",
+            "Addons\\Shifts\\": "addons/shifts/src/",
+            "Addons\\Bookings\\": "addons/bookings/src/"
         },
         "files": [
             "app/Support/helpers.php"

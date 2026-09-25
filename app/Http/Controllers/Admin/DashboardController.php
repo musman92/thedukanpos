@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shift;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
 use App\Support\DashboardMetrics;
-use App\Support\TenantAddons;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,7 +30,8 @@ class DashboardController extends Controller
             [$startDate, $endDate] = [$endDate, $startDate];
         }
 
-        $hasOpenShift = TenantAddons::has(TenantAddons::SHIFTS) && Shift::query()
+        $shiftsEnabled = (bool) app(AddonRegistry::class)->capability('shifts.enabled', false);
+        $hasOpenShift = $shiftsEnabled && Shift::query()
             ->where('branch_id', $branch->id)
             ->open()
             ->exists();
@@ -44,7 +45,7 @@ class DashboardController extends Controller
             'start_date' => $startDate,
             'end_date' => $endDate,
             'today_label' => $today->format('j F'),
-            'show_shift_reminder' => TenantAddons::has(TenantAddons::SHIFTS) && ! $hasOpenShift,
+            'show_shift_reminder' => $shiftsEnabled && ! $hasOpenShift,
             'today_stats' => DashboardMetrics::summaryForToday($branch->id),
             'period_stats' => DashboardMetrics::summaryForRange($branch->id, $startDate, $endDate),
             'revenue_chart_daily' => DashboardMetrics::dailyRevenueSeries($branch->id, $startDate, $endDate),

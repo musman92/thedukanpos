@@ -9,8 +9,6 @@ use App\Models\TenantAddon;
  */
 final class TenantAddons
 {
-    public const SHIFTS = 'shifts';
-
     /**
      * @return list<string>
      */
@@ -20,20 +18,18 @@ final class TenantAddons
             return [];
         }
 
-        return once(function () {
-            $tenantId = tenant('id');
-            if (! $tenantId) {
-                return [];
-            }
+        $tenantId = tenant('id');
+        if (! $tenantId) {
+            return [];
+        }
 
-            return TenantAddon::query()
-                ->where('tenant_id', $tenantId)
-                ->where('status', TenantAddon::STATUS_ACTIVE)
-                ->pluck('slug')
-                ->map(fn (string $slug) => strtolower(trim($slug)))
-                ->values()
-                ->all();
-        });
+        return TenantAddon::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', TenantAddon::STATUS_ACTIVE)
+            ->pluck('slug')
+            ->map(fn (string $slug) => strtolower(trim($slug)))
+            ->values()
+            ->all();
     }
 
     public static function has(string $slug): bool
@@ -41,19 +37,5 @@ final class TenantAddons
         $slug = strtolower(trim($slug));
 
         return in_array($slug, self::activeSlugs(), true);
-    }
-
-    /**
-     * Shared Inertia shape: { shifts: bool, ... }
-     *
-     * @return array<string, bool>
-     */
-    public static function flags(): array
-    {
-        $active = array_fill_keys(self::activeSlugs(), true);
-
-        return [
-            self::SHIFTS => isset($active[self::SHIFTS]),
-        ];
     }
 }

@@ -10,12 +10,16 @@ use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\CustomerService;
 use App\Services\SaleService;
 use App\Services\SettingService;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
-use App\Support\TenantAddons;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,10 +30,14 @@ class PosController extends Controller
         protected SaleService $sales,
     ) {}
 
-    public function index(SaleService $sales): Response
+    public function index(SaleService $sales): Response|RedirectResponse
     {
+        if (app(AddonRegistry::class)->capability('checkout.surface', 'pos') === 'orders') {
+            return redirect()->route('admin.orders.index', ['open' => 1]);
+        }
+
         $branch = BranchContext::ensure();
-        $shiftsEnabled = TenantAddons::has(TenantAddons::SHIFTS);
+        $shiftsEnabled = (bool) app(AddonRegistry::class)->capability('shifts.enabled', false);
         $shift = $shiftsEnabled
             ? Shift::query()->where('branch_id', $branch->id)->open()->latest('id')->first()
             : null;
@@ -94,7 +102,7 @@ class PosController extends Controller
         ]);
 
         try {
-            $customer = app(\App\Services\CustomerService::class)->create([
+            $customer = app(CustomerService::class)->create([
                 'name' => $data['name'],
                 'phone' => $data['phone'] ?? null,
                 'email' => $data['email'] ?? null,
@@ -102,7 +110,7 @@ class PosController extends Controller
                 'opening_balance' => 0,
                 'is_active' => true,
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?? 'Could not create customer.';
 
             return response()->json(['message' => $message, 'errors' => $e->errors()], 422);
@@ -545,7 +553,7 @@ class PosController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $variants
+     * @param  Collection<int, array<string, mixed>>  $variants
      * @return list<array<string, mixed>>
      */
     protected function groupVariantsForPos($variants): array
@@ -614,7 +622,7 @@ class PosController extends Controller
 
     protected function resolveOpenShiftId(int $branchId): ?int
     {
-        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+        if (! app(AddonRegistry::class)->capability('shifts.enabled', false)) {
             return null;
         }
 

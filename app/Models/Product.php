@@ -13,6 +13,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'type',
+        'kind',
         'short_code',
         'barcode',
         'sku',
@@ -58,6 +59,16 @@ class Product extends Model
     public function isSingle(): bool
     {
         return ($this->type ?? 'single') === 'single';
+    }
+
+    public function isService(): bool
+    {
+        return ($this->kind ?? 'goods') === 'service';
+    }
+
+    public function affectsInventory(): bool
+    {
+        return ! $this->isService() && (bool) $this->track_stock;
     }
 
     /**

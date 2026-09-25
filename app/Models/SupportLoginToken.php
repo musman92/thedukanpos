@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class SupportLoginToken extends Model
 {
+    use CentralConnection;
+
     protected $fillable = [
         'token', 'tenant_id', 'created_by', 'expires_at', 'used_at',
     ];

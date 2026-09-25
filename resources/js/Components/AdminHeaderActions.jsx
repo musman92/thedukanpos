@@ -138,7 +138,7 @@ function BranchDropdown({ branch, branches }) {
     );
 }
 
-function UserMenu({ user, tenant, t }) {
+function UserMenu({ user, tenant, t, showPos = true }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useClickOutside(ref, () => setOpen(false));
@@ -187,7 +187,7 @@ function UserMenu({ user, tenant, t }) {
                         </span>
                     </div>
                     <div className="py-1">
-                        <a
+                        {showPos && <a
                             href="/pos"
                             onClick={(e) => {
                                 e.preventDefault();
@@ -198,7 +198,7 @@ function UserMenu({ user, tenant, t }) {
                         >
                             <Store className="h-4 w-4" strokeWidth={1.75} />
                             {t('header.open_pos')}
-                        </a>
+                        </a>}
                         <Link
                             href={route('admin.dashboard')}
                             className="flex min-h-11 items-center gap-2.5 px-3.5 py-2 text-sm text-theme-ink-soft hover:bg-theme-bg hover:text-theme-ink"
@@ -235,6 +235,8 @@ function UserMenu({ user, tenant, t }) {
 export default function AdminHeaderActions() {
     const { auth, branch, branches, openShift, tenant, addons } = usePage().props;
     const { t } = useI18n();
+    const checkoutSurface = addons?.capabilities?.checkout?.surface || 'pos';
+    const showPos = checkoutSurface !== 'orders';
 
     useEffect(() => {
         if (branch?.id) {
@@ -244,13 +246,13 @@ export default function AdminHeaderActions() {
 
     return (
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-            <OpenPosButton t={t} />
-            {addons?.shifts ? <ShiftButton openShift={openShift} t={t} /> : null}
+            {showPos ? <OpenPosButton t={t} /> : null}
+            {addons?.capabilities?.shifts?.enabled ? <ShiftButton openShift={openShift} t={t} /> : null}
             <BranchDropdown branch={branch} branches={branches} />
             <div className="hidden sm:block">
                 <ThemeToggle />
             </div>
-            <UserMenu user={auth?.user} tenant={tenant} t={t} />
+            <UserMenu user={auth?.user} tenant={tenant} t={t} showPos={showPos} />
         </div>
     );
 }

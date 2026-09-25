@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\ProductVariant;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
-use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
@@ -46,13 +46,15 @@ class ReturnService
             $total = 0;
 
             foreach ($data['items'] as $row) {
-                $variant = ProductVariant::query()->findOrFail($row['variant_id']);
+                $variant = ProductVariant::query()->with('product')->findOrFail($row['variant_id']);
                 $qty = (float) $row['quantity'];
                 $unitId = (int) $row['unit_id'];
                 $qtySale = $variant->toSaleQuantity($qty, $unitId);
                 $unitCost = isset($row['unit_cost'])
                     ? (float) $row['unit_cost']
-                    : (float) $this->inventory->getOrCreateStock((int) $data['branch_id'], $variant)->average_cost;
+                    : ($variant->product?->affectsInventory()
+                        ? (float) $this->inventory->getOrCreateStock((int) $data['branch_id'], $variant)->average_cost
+                        : (float) $variant->cost_per_unit);
 
                 // unit_cost is per sale unit when converting
                 $lineTotal = $qtySale * $unitCost;
@@ -69,14 +71,16 @@ class ReturnService
                     'line_total' => $lineTotal,
                 ]);
 
-                $this->inventory->deduct(
-                    (int) $data['branch_id'],
-                    $variant,
-                    $qtySale,
-                    $item,
-                    "Purchase return {$doc->number}",
-                    'purchase_return',
-                );
+                if ($variant->product?->affectsInventory()) {
+                    $this->inventory->deduct(
+                        (int) $data['branch_id'],
+                        $variant,
+                        $qtySale,
+                        $item,
+                        "Purchase return {$doc->number}",
+                        'purchase_return',
+                    );
+                }
 
                 $total += $lineTotal;
             }
@@ -138,7 +142,7 @@ class ReturnService
                 $lineNet = $lineTotal - $taxAmount;
                 $qtySale = (float) $saleItem->quantity_in_sale_unit * $ratio;
 
-                $variant = ProductVariant::query()->findOrFail($saleItem->variant_id);
+                $variant = ProductVariant::query()->with('product')->findOrFail($saleItem->variant_id);
 
                 $item = SaleReturnItem::query()->create([
                     'sale_return_id' => $doc->id,
@@ -153,15 +157,17 @@ class ReturnService
                     'line_total' => $lineTotal,
                 ]);
 
-                $this->inventory->receive(
-                    (int) $data['branch_id'],
-                    $variant,
-                    $qtySale,
-                    (float) $saleItem->cost_per_unit * $qtySale,
-                    $item,
-                    "Sale return {$doc->number}",
-                    'sale_return',
-                );
+                if ($variant->product?->affectsInventory()) {
+                    $this->inventory->receive(
+                        (int) $data['branch_id'],
+                        $variant,
+                        $qtySale,
+                        (float) $saleItem->cost_per_unit * $qtySale,
+                        $item,
+                        "Sale return {$doc->number}",
+                        'sale_return',
+                    );
+                }
 
                 $subtotal += $lineNet;
                 $taxTotal += $taxAmount;

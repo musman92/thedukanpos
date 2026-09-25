@@ -68,7 +68,7 @@ export default function Index({
     editing = null,
     form_open: formOpen = false,
 }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
     const [showForm, setShowForm] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
     const [q, setQ] = useState(filters.q || '');
@@ -81,7 +81,8 @@ export default function Index({
 
     const sort = filters.sort || 'id';
     const direction = filters.direction || 'desc';
-    const posAvailable = hasRoute('pos.index');
+    const posAvailable = hasRoute('pos.index')
+        && (props.addons?.capabilities?.checkout?.surface || 'pos') !== 'orders';
 
     const listQuery = {
         q: filters.q || '',

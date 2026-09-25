@@ -178,6 +178,8 @@ export default function Index({ products, filters }) {
                                     <td className="px-3 py-3">
                                         <p className="font-medium text-theme-ink">{product.name}</p>
                                         <p className="mt-0.5 text-xs text-theme-ink-muted">
+                                            {(product.kind || 'goods') === 'service' ? 'Service' : 'Goods'}
+                                            {' · '}
                                             {(product.type || 'single') === 'variant' ? 'Variant' : 'Single'}
                                             {product.tax?.name ? ` · Tax: ${product.tax.name}` : ' · Tax exempt'}
                                         </p>

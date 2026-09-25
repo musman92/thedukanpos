@@ -10,8 +10,8 @@ use App\Models\SaleItem;
 use App\Models\SalePayment;
 use App\Models\Shift;
 use App\Models\User;
+use App\Support\AddonRegistry;
 use App\Support\BranchContext;
-use App\Support\TenantAddons;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -192,7 +192,7 @@ class SaleService
 
     public function resolveOpenShiftId(int $branchId): ?int
     {
-        if (! TenantAddons::has(TenantAddons::SHIFTS)) {
+        if (! app(AddonRegistry::class)->capability('shifts.enabled', false)) {
             return null;
         }
 
@@ -970,7 +970,7 @@ class SaleService
                 continue;
             }
             $product = $variant->product;
-            if (! $product?->track_stock) {
+            if (! $product?->affectsInventory()) {
                 continue;
             }
 
@@ -1076,8 +1076,13 @@ class SaleService
 
     protected function assertOpenShift(mixed $shiftId): void
     {
-        if (! $shiftId) {
+        $required = (bool) app(AddonRegistry::class)->capability('shifts.enabled', false);
+        if (! $required) {
             return;
+        }
+
+        if (! $shiftId) {
+            throw new \RuntimeException('Open a shift before creating a sale.');
         }
 
         $shift = Shift::query()->findOrFail($shiftId);
@@ -1165,7 +1170,7 @@ class SaleService
             : null;
 
         if ($riderId) {
-            $rider = \App\Models\User::query()
+            $rider = User::query()
                 ->where('id', $riderId)
                 ->where('is_active', true)
                 ->first();
@@ -1262,7 +1267,7 @@ class SaleService
             : $sale->rider_id;
 
         if ($riderId) {
-            $rider = \App\Models\User::query()
+            $rider = User::query()
                 ->where('id', $riderId)
                 ->where('is_active', true)
                 ->first();
@@ -1366,7 +1371,7 @@ class SaleService
             $subtotal += $lineNet;
             $taxTotal += $taxAmount;
 
-            if ($deductStock && $product?->track_stock) {
+            if ($deductStock && $product?->affectsInventory()) {
                 $this->inventory->deduct(
                     branchId: $branchId,
                     variant: $variant,

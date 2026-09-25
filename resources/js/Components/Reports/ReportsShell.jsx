@@ -56,8 +56,8 @@ export default function ReportsShell({
 }) {
     const { addons } = usePage().props;
     const visibleReports = useMemo(
-        () => REPORT_CATALOG.filter((item) => item.key !== 'shifts-z' || addons?.shifts),
-        [addons?.shifts],
+        () => REPORT_CATALOG.filter((item) => item.key !== 'shifts-z' || addons?.capabilities?.shifts?.enabled),
+        [addons?.capabilities?.shifts?.enabled],
     );
     const report = findReport(activeKey, visibleReports) || visibleReports[0];
     const needed = report?.filters || [];

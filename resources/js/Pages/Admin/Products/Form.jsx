@@ -4,8 +4,41 @@ import Button from '@/Components/Ui/Button';
 import ImageUploadField from '@/Components/Ui/ImageUploadField';
 import Input, { Field } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
+import SlotHost from '@/Components/Addons/SlotHost';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+
+const KIND_OPTIONS = [
+    { value: 'goods', label: 'Goods' },
+    { value: 'service', label: 'Service' },
+];
+
+const CHECKBOX_CLASS =
+    'rounded border-theme-border text-theme-primary focus:ring-theme-primary disabled:cursor-not-allowed disabled:opacity-60';
+
+function CheckboxRow({ label, hint, checked, disabled = false, onChange }) {
+    return (
+        <label
+            className={`flex items-start gap-2.5 p-3 text-sm ${
+                disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+            }`}
+        >
+            <input
+                type="checkbox"
+                className={`mt-0.5 ${CHECKBOX_CLASS}`}
+                checked={checked}
+                disabled={disabled}
+                onChange={(e) => onChange(e.target.checked)}
+            />
+            <span className="min-w-0">
+                <span className="font-medium text-theme-ink">{label}</span>
+                {hint && (
+                    <span className="mt-0.5 block text-xs text-theme-ink-muted">{hint}</span>
+                )}
+            </span>
+        </label>
+    );
+}
 
 function today() {
     return new Date().toISOString().slice(0, 10);
@@ -52,6 +85,7 @@ export default function Form({ product, options, branchId }) {
 
     const { data, setData, post, processing, errors, clearErrors, transform } = useForm({
         type: initialType,
+        kind: product?.kind || 'goods',
         name: product?.name || '',
         short_code: product?.short_code || '',
         brand_id: product?.brand_id || '',
@@ -85,6 +119,7 @@ export default function Form({ product, options, branchId }) {
         notes: product?.notes || '',
         image: null,
         remove_image: false,
+        addons: {},
         variants:
             initialType === 'variant' && product?.variants?.length
                 ? product.variants.map((v) => {
@@ -278,6 +313,21 @@ export default function Form({ product, options, branchId }) {
                                 error={!!errors.short_code}
                             />
                         </Field>
+                        <Field label="Kind" required error={errors.kind}>
+                            <SearchableSelect
+                                options={KIND_OPTIONS}
+                                value={data.kind}
+                                searchable={false}
+                                onChange={(kind) => {
+                                    setData({
+                                        ...data,
+                                        kind,
+                                        track_stock: kind === 'service' ? false : data.track_stock,
+                                    });
+                                }}
+                                error={!!errors.kind}
+                            />
+                        </Field>
                         <Field label="Tax" error={errors.tax_id}>
                             <SearchableSelect
                                 options={[{ value: '', label: 'Exempt / none' }, ...taxOptions]}
@@ -327,44 +377,45 @@ export default function Form({ product, options, branchId }) {
                             />
                         </Field>
 
-                        <div className="flex flex-col gap-3 md:col-span-2">
-                            <label className="flex items-start gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    className="mt-0.5"
-                                    checked={data.type === 'variant'}
-                                    disabled={editing}
-                                    onChange={(e) => toggleHasVariants(e.target.checked)}
-                                />
-                                <span>
-                                    <span className="font-medium text-theme-ink">Has variants</span>
-                                    <span className="mt-0.5 block text-xs text-theme-ink-muted">
-                                        {editing
-                                            ? 'Type cannot be changed after create.'
-                                            : 'Uses options from Catalog → Variations (Size, Color, etc.). Leave unchecked for a single SKU.'}
-                                    </span>
-                                </span>
-                            </label>
-                            <div className="flex flex-wrap gap-4">
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={!!data.is_active}
-                                        onChange={(e) => setData('is_active', e.target.checked)}
-                                    />
-                                    Active
-                                </label>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={!!data.track_stock}
-                                        onChange={(e) => setData('track_stock', e.target.checked)}
-                                    />
-                                    Track stock
-                                </label>
-                            </div>
+                        <div className="divide-y divide-theme-border rounded-lg border border-theme-border md:col-span-2">
+                            <CheckboxRow
+                                label="Has variants"
+                                hint={
+                                    editing
+                                        ? 'Type cannot be changed after create.'
+                                        : 'Uses options from Catalog → Variations (Size, Color, etc.). Leave unchecked for a single SKU.'
+                                }
+                                checked={data.type === 'variant'}
+                                disabled={editing}
+                                onChange={toggleHasVariants}
+                            />
+                            <CheckboxRow
+                                label="Track stock"
+                                hint={
+                                    data.kind === 'service'
+                                        ? 'Services do not hold stock.'
+                                        : 'Keeps quantity on hand and low-stock alerts up to date.'
+                                }
+                                checked={!!data.track_stock}
+                                disabled={data.kind === 'service'}
+                                onChange={(checked) => setData('track_stock', checked)}
+                            />
+                            <CheckboxRow
+                                label="Active"
+                                hint="Inactive products stay hidden from POS and sales."
+                                checked={!!data.is_active}
+                                onChange={(checked) => setData('is_active', checked)}
+                            />
                         </div>
                     </div>
+
+                    <SlotHost
+                        name="product.form"
+                        data={data}
+                        setData={setData}
+                        errors={errors}
+                        product={product}
+                    />
                 </div>
 
                 {data.type === 'single' && (
@@ -459,9 +510,10 @@ export default function Form({ product, options, branchId }) {
                                 />
                             </Field>
                             <div className="flex items-end pb-2">
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex cursor-pointer items-center gap-2 text-sm text-theme-ink">
                                     <input
                                         type="checkbox"
+                                        className={CHECKBOX_CLASS}
                                         checked={!!data.track_serial}
                                         onChange={(e) => setData('track_serial', e.target.checked)}
                                     />
@@ -470,7 +522,7 @@ export default function Form({ product, options, branchId }) {
                             </div>
                         </div>
 
-                        {!editing && (
+                        {!editing && data.kind === 'goods' && (
                             <div className="grid gap-4 border-t border-theme-border pt-4 md:grid-cols-2">
                                 <Field
                                     label="Opening stock"
@@ -534,10 +586,15 @@ export default function Form({ product, options, branchId }) {
                                             {masterOptions.map((opt) => (
                                                 <label
                                                     key={opt.id}
-                                                    className="flex items-center gap-2 rounded-lg border border-theme-border px-3 py-2 text-sm"
+                                                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                                                        isOptionSelected(opt.id)
+                                                            ? 'border-theme-primary bg-theme-primary-soft text-theme-primary'
+                                                            : 'border-theme-border text-theme-ink hover:border-theme-primary'
+                                                    }`}
                                                 >
                                                     <input
                                                         type="checkbox"
+                                                        className={CHECKBOX_CLASS}
                                                         checked={isOptionSelected(opt.id)}
                                                         onChange={() => toggleOption(opt)}
                                                     />
@@ -732,9 +789,10 @@ export default function Form({ product, options, branchId }) {
                                                     />
                                                 </Field>
                                                 <div className="flex items-end pb-2">
-                                                    <label className="flex items-center gap-2 text-sm">
+                                                    <label className="flex cursor-pointer items-center gap-2 text-sm text-theme-ink">
                                                         <input
                                                             type="checkbox"
+                                                            className={CHECKBOX_CLASS}
                                                             checked={!!variant.track_serial}
                                                             onChange={(e) =>
                                                                 setVariant(index, {
@@ -745,7 +803,7 @@ export default function Form({ product, options, branchId }) {
                                                         Track serial / IMEI
                                                     </label>
                                                 </div>
-                                                {!editing && (
+                                                {!editing && data.kind === 'goods' && (
                                                     <>
                                                         <Field label="Opening stock">
                                                             <Input
