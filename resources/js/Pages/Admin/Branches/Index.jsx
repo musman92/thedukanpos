@@ -5,11 +5,14 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import BranchFormDrawer from '@/Pages/Admin/Branches/BranchFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
-import { Head, router } from '@inertiajs/react';
+import { PlanCapNote, planResource } from '@/lib/planCap.jsx';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Index({ branches, filters }) {
+    const { plan } = usePage().props;
+    const branchCap = planResource(plan, 'branch');
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [q, setQ] = useState(filters.q || '');
@@ -67,13 +70,15 @@ export default function Index({ branches, filters }) {
             title="Branches"
             description="Locations for stock, sales, and staff. Use the header switcher to change the working branch."
             actions={
-                <Button onClick={openCreate}>
+                <Button onClick={openCreate} disabled={branchCap.full} title={branchCap.text}>
                     <Plus className="h-4 w-4" strokeWidth={2.25} />
                     Add branch
                 </Button>
             }
         >
             <Head title="Branches" />
+
+            <PlanCapNote plan={plan} resource="branch" />
 
             <div className="dp-card overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-theme-border px-4 py-3">

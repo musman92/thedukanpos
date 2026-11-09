@@ -5,18 +5,43 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { useI18n } from '@/hooks/useI18n';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
+
+const shopCodeKey = 'dukanpos.shop_code';
+
+function savedShopCode() {
+    if (typeof window === 'undefined') {
+        return '';
+    }
+
+    return window.localStorage.getItem(shopCodeKey) || '';
+}
 
 export default function Login({ status }) {
     const { t } = useI18n();
-    const { data, setData, post, processing, errors, reset } = useForm({
-        login: 'admin@shop1',
+    const rememberedShop = savedShopCode();
+    const { data, setData, post, processing, errors, reset, transform } = useForm({
+        tenant_code: rememberedShop,
+        username: '',
         password: '',
         remember: false,
     });
 
     const submit = (e) => {
         e.preventDefault();
+
+        const shopCode = data.tenant_code.trim().toLowerCase();
+        const username = data.username.trim().toLowerCase();
+        if (shopCode) {
+            window.localStorage.setItem(shopCodeKey, shopCode);
+        }
+
+        transform((form) => ({
+            ...form,
+            tenant_code: shopCode,
+            username,
+        }));
+
         post(route('login'), {
             onFinish: () => reset('password'),
         });
@@ -39,22 +64,51 @@ export default function Login({ status }) {
                 </div>
             )}
 
+            {errors.login && (
+                <div className="mb-4 text-sm font-medium text-theme-danger">
+                    {errors.login}
+                </div>
+            )}
+
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="login" value={t('auth.login')} />
+                    <InputLabel htmlFor="tenant_code" value={t('auth.shop_code')} />
                     <TextInput
-                        id="login"
+                        id="tenant_code"
                         type="text"
-                        name="login"
-                        value={data.login}
+                        name="tenant_code"
+                        value={data.tenant_code}
                         className="mt-1 block w-full"
-                        placeholder="admin@shop1"
-                        autoComplete="username"
-                        isFocused={true}
-                        onChange={(e) => setData('login', e.target.value)}
+                        placeholder="shop1"
+                        autoComplete="organization"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        isFocused={!rememberedShop}
+                        onChange={(e) => setData('tenant_code', e.target.value)}
                     />
-                    <InputError message={errors.login} className="mt-2" />
-                    <p className="mt-1 text-xs text-theme-ink-muted">{t('auth.example')}</p>
+                    <p className="mt-1 text-xs text-theme-ink-muted">{t('auth.shop_code_hint')}</p>
+                    <InputError message={errors.tenant_code} className="mt-2" />
+                </div>
+
+                <div className="mt-4">
+                    <InputLabel htmlFor="username" value={t('auth.username')} />
+                    <TextInput
+                        id="username"
+                        type="text"
+                        name="username"
+                        value={data.username}
+                        className="mt-1 block w-full"
+                        placeholder="admin"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        isFocused={!!rememberedShop}
+                        onChange={(e) => setData('username', e.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-theme-ink-muted">{t('auth.username_hint')}</p>
+                    <InputError message={errors.username} className="mt-2" />
                 </div>
 
                 <div className="mt-4">
@@ -69,6 +123,15 @@ export default function Login({ status }) {
                         onChange={(e) => setData('password', e.target.value)}
                     />
                     <InputError message={errors.password} className="mt-2" />
+                </div>
+
+                <div className="mt-2 text-end">
+                    <Link
+                        href={route('password.request')}
+                        className="text-sm font-medium text-theme-primary"
+                    >
+                        {t('auth.forgot_password')}
+                    </Link>
                 </div>
 
                 <div className="mt-4 block">
@@ -88,13 +151,19 @@ export default function Login({ status }) {
 
                 <div className="mt-6 flex items-center justify-end">
                     <PrimaryButton
-                        className="w-full min-h-12 justify-center sm:ms-4 sm:w-auto sm:min-h-0"
+                        className="w-full min-h-12 justify-center"
                         disabled={processing}
                     >
                         {t('auth.log_in')}
                     </PrimaryButton>
                 </div>
             </form>
+
+            <p className="mt-4 text-center text-sm text-theme-ink-soft">
+                <Link href={route('register')} className="font-medium text-theme-primary">
+                    {t('auth.create_shop')}
+                </Link>
+            </p>
         </GuestLayout>
     );
 }

@@ -1,6 +1,6 @@
 import Button from '@/Components/Ui/Button';
 import Input, { Field } from '@/Components/Ui/Input';
-import ThemeToggle from '@/Components/ThemeToggle';
+import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Login() {
@@ -11,39 +11,26 @@ export default function Login() {
     });
 
     return (
-        <div className="relative flex min-h-[100dvh] items-center justify-center bg-theme-bg px-3 py-[max(1rem,env(safe-area-inset-top))] sm:px-4">
+        <GuestLayout>
             <Head title="Platform login" />
-
-            <div className="absolute right-3 top-[max(.75rem,env(safe-area-inset-top))] sm:right-4">
-                <ThemeToggle />
-            </div>
 
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
                     post(route('platform.login.store'));
                 }}
-                className="dp-card w-full max-w-md overflow-visible rounded-2xl p-4 sm:p-6"
             >
-                <div className="mb-6 flex items-center gap-3">
-                    <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                        style={{ background: 'var(--color-brand-mark)' }}
-                    >
-                        D
-                    </div>
-                    <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-ink-muted">
-                            Platform
-                        </p>
-                        <h1 className="font-display text-xl font-semibold tracking-tight text-theme-ink">
-                            DukanPOS operator
-                        </h1>
-                    </div>
+                <div className="mb-6">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-ink-muted">
+                        Platform
+                    </p>
+                    <h1 className="font-display text-xl font-semibold tracking-tight text-theme-ink">
+                        DukanPOS operator
+                    </h1>
+                    <p className="mt-1 text-sm text-theme-ink-soft">
+                        Landlord control plane — not shop login.
+                    </p>
                 </div>
-                <p className="mb-6 text-sm text-theme-ink-soft">
-                    Landlord control plane — not shop login.
-                </p>
 
                 <div className="space-y-4">
                     <Field label="Email" error={errors.email}>
@@ -78,6 +65,6 @@ export default function Login() {
                     </Button>
                 </div>
             </form>
-        </div>
+        </GuestLayout>
     );
 }

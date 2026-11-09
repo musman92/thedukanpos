@@ -12,7 +12,7 @@ import {
     isEditableTarget,
     POS_HOTKEYS,
 } from '@/lib/posHotkeys';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     ArrowLeftRight,
@@ -205,6 +205,9 @@ export default function Index({
     default_customer_id: defaultCustomerId = null,
     riders = [],
 }) {
+    const { auth } = usePage().props;
+    const accountName = auth?.user?.name || auth?.user?.username || 'Profile';
+    const accountInitial = auth?.user?.initial || 'U';
     const allowCredit = posSettings.allow_credit !== false;
     const enableDelivery = !!posSettings.enable_delivery;
     const showStock = posSettings.show_stock !== false;
@@ -952,6 +955,20 @@ export default function Index({
                             title="Keyboard shortcuts (?)"
                         >
                             <Keyboard className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => goAdmin('/admin/profile')}
+                            className="inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-md border border-theme-border bg-theme-bg px-2 text-xs font-medium text-theme-ink-soft transition hover:border-theme-primary/40 hover:text-theme-ink"
+                            title={accountName}
+                        >
+                            <span
+                                className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                                style={{ background: 'var(--color-brand-mark)' }}
+                            >
+                                {accountInitial}
+                            </span>
+                            <span className="hidden max-w-[7rem] truncate sm:inline">{accountName}</span>
                         </button>
                         <button
                             type="button"

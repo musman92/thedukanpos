@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Sale;
-use App\Models\SaleItem;
+use App\Services\OperationalReportService;
 use App\Services\ReportPdfService;
 use App\Support\BranchContext;
 use Illuminate\Http\Request;
@@ -16,25 +16,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function sales(Request $request): Response|HttpResponse
+    public function sales(Request $request, OperationalReportService $reports): Response|HttpResponse
     {
         $branch = BranchContext::ensure();
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to = $request->input('to', now()->toDateString());
-
-        $base = Sale::query()
-            ->where('branch_id', $branch->id)
-            ->where('status', Sale::STATUS_COMPLETED)
-            ->whereDate('business_date', '>=', $from)
-            ->whereDate('business_date', '<=', $to);
-
-        $summary = [
-            'count' => (clone $base)->count(),
-            'total' => money_round((clone $base)->sum('total')),
-            'paid' => money_round((clone $base)->sum('paid_total')),
-            'tax' => money_round((clone $base)->sum('tax_total')),
-            'discount' => money_round((clone $base)->sum('discount_total')),
-        ];
+        [$from, $to] = $reports->dateRange($request->all());
+        $base = $reports->salesQuery($branch->id, $from, $to);
+        $summary = $reports->salesSummary($branch->id, $from, $to);
 
         if ($request->input('export') === 'pdf') {
             $columns = [
@@ -49,13 +36,7 @@ class ReportController extends Controller
                 ->with('cashier')
                 ->latest('id')
                 ->get()
-                ->map(fn (Sale $sale) => [
-                    'number' => $sale->number,
-                    'created_at' => format_company_datetime($sale->created_at),
-                    'cashier_name' => $sale->cashier?->name ?: $sale->cashier?->username,
-                    'total' => money_round($sale->total),
-                    'paid_total' => money_round($sale->paid_total),
-                ])
+                ->map(fn (Sale $sale) => $reports->mapSalesListRow($sale))
                 ->all();
 
             return app(ReportPdfService::class)->download([
@@ -83,16 +64,7 @@ class ReportController extends Controller
             ->latest('id')
             ->paginate(50)
             ->withQueryString()
-            ->through(fn (Sale $sale) => [
-                'id' => $sale->id,
-                'number' => $sale->number,
-                'created_at' => format_company_datetime($sale->created_at),
-                'total' => money_round($sale->total),
-                'paid_total' => money_round($sale->paid_total),
-                'cashier' => $sale->cashier
-                    ? ['id' => $sale->cashier->id, 'name' => $sale->cashier->name ?: $sale->cashier->username]
-                    : null,
-            ]);
+            ->through(fn (Sale $sale) => $reports->mapSalesListRow($sale));
 
         return Inertia::render('Admin/Reports/Sales', [
             'sales' => $sales,
@@ -103,23 +75,18 @@ class ReportController extends Controller
         ]);
     }
 
-    public function salesExport(Request $request): StreamedResponse
+    public function salesExport(Request $request, OperationalReportService $reports): StreamedResponse
     {
         $branch = BranchContext::ensure();
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to = $request->input('to', now()->toDateString());
+        [$from, $to] = $reports->dateRange($request->all());
 
         $filename = "sales-{$from}-to-{$to}.csv";
 
-        return response()->streamDownload(function () use ($branch, $from, $to) {
+        return response()->streamDownload(function () use ($reports, $branch, $from, $to) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Number', 'Date', 'Subtotal', 'Tax', 'Total', 'Paid', 'Cashier']);
-            Sale::query()
+            $reports->salesQuery($branch->id, $from, $to)
                 ->with('cashier')
-                ->where('branch_id', $branch->id)
-                ->where('status', Sale::STATUS_COMPLETED)
-                ->whereDate('business_date', '>=', $from)
-                ->whereDate('business_date', '<=', $to)
                 ->orderBy('id')
                 ->chunk(200, function ($rows) use ($out) {
                     foreach ($rows as $sale) {
@@ -138,27 +105,12 @@ class ReportController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    public function productSales(Request $request): Response|HttpResponse
+    public function productSales(Request $request, OperationalReportService $reports): Response|HttpResponse
     {
         $branch = BranchContext::ensure();
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to = $request->input('to', now()->toDateString());
+        [$from, $to] = $reports->dateRange($request->all());
         $categoryId = $request->input('category_id');
-
-        $rows = SaleItem::query()
-            ->selectRaw('sale_items.variant_id, sale_items.product_id, SUM(sale_items.quantity_in_sale_unit) as qty, SUM(sale_items.line_total) as amount')
-            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->join('products', 'products.id', '=', 'sale_items.product_id')
-            ->where('sales.branch_id', $branch->id)
-            ->where('sales.status', Sale::STATUS_COMPLETED)
-            ->whereDate('sales.business_date', '>=', $from)
-            ->whereDate('sales.business_date', '<=', $to)
-            ->when($categoryId, fn ($q) => $q->where('products.category_id', (int) $categoryId))
-            ->with(['variant', 'product'])
-            ->groupBy('sale_items.variant_id', 'sale_items.product_id')
-            ->orderByDesc('amount')
-            ->limit(100)
-            ->get();
+        $rows = $reports->productSalesItems($branch->id, $from, $to, $categoryId);
 
         if ($request->input('export') === 'pdf') {
             $columns = [

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Branch;
 use App\Models\Shift;
+use App\Services\PlanService;
 use App\Services\SettingService;
 use App\Support\AddonRegistry;
 use App\Support\BranchContext;
@@ -53,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                         'name' => $user->name,
                         'username' => $user->username,
                         'email' => $user->email,
+                        'phone' => $user->phone,
                         'initial' => mb_strtoupper(mb_substr($user->name ?: $user->username ?: 'U', 0, 1)),
                         'role' => $role,
                     ];
@@ -73,6 +75,17 @@ class HandleInertiaRequests extends Middleware
                     'rtl' => $rtl,
                     'locales' => Locale::options(),
                 ];
+            },
+            'plan' => function () {
+                if (! tenancy()->initialized) {
+                    return null;
+                }
+
+                try {
+                    return app(PlanService::class)->usage();
+                } catch (\Throwable) {
+                    return null;
+                }
             },
             'tenant' => fn () => tenancy()->initialized ? [
                 'id' => tenant('id'),

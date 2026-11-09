@@ -4,6 +4,7 @@ import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Building2,
+    CreditCard,
     FileText,
     LayoutDashboard,
     LogOut,
@@ -29,6 +30,14 @@ const modules = [
         icon: Building2,
         href: 'platform.tenants.index',
         match: ['platform.tenants'],
+    },
+    {
+        id: 'plans',
+        type: 'link',
+        label: 'Plans',
+        icon: CreditCard,
+        href: 'platform.plans.index',
+        match: ['platform.plans'],
     },
     {
         id: 'addons',

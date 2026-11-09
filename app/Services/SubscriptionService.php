@@ -73,13 +73,21 @@ class SubscriptionService
                 'notes' => $inv->notes,
             ]);
 
+        $tenant->loadMissing('planRecord');
+        $limits = app(PlanService::class)->effectiveLimits($tenant);
+
         return [
             'subscription' => [
                 'name' => $tenant->name,
                 'code' => $tenant->code,
                 'plan' => $tenant->plan,
+                'plan_name' => $tenant->planRecord?->name ?: ($tenant->plan ? ucfirst((string) $tenant->plan) : null),
                 'billing_status' => $tenant->billing_status,
+                'billing_interval' => $tenant->billing_interval ?: 'monthly',
                 'monthly_fee' => round((float) $tenant->monthly_fee, 2),
+                'product_limit' => $limits['product_limit'],
+                'user_limit' => $limits['user_limit'],
+                'branch_limit' => $limits['branch_limit'],
                 'currency' => $tenant->currency,
                 'trial_ends_at' => optional($tenant->trial_ends_at)?->toDateString(),
                 'billing_notes' => $tenant->billing_notes,

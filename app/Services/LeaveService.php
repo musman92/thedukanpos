@@ -240,7 +240,7 @@ class LeaveService
     /**
      * @return array<string, mixed>
      */
-    protected function serialize(LeaveRequest $leave): array
+    public function serialize(LeaveRequest $leave): array
     {
         return [
             'id' => $leave->id,

@@ -10,6 +10,7 @@ use App\Models\Tax;
 use App\Models\Unit;
 use App\Models\Variation;
 use App\Models\VariationOption;
+use App\Support\PlanLimit;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -28,6 +29,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class ProductImportExportService
 {
+    public function __construct(protected PlanService $plans) {}
+
     /** @var list<string> */
     public const PRODUCT_HEADERS = [
         'product_code',
@@ -486,7 +489,12 @@ class ProductImportExportService
             }
         }
 
-        DB::transaction(function () use ($productRows, $variantsByProduct, &$created, &$updated, &$skipped, &$errors) {
+        $usage = $this->plans->usage();
+        $productLimit = $usage['product_limit'];
+        $planName = $usage['name'];
+        $room = $productLimit === null ? null : max(0, (int) $productLimit - (int) $usage['product_count']);
+
+        DB::transaction(function () use ($productRows, $variantsByProduct, &$created, &$updated, &$skipped, &$errors, &$room, $planName, $productLimit) {
             foreach ($productRows as $row) {
                 $rowRef = (string) ($row['_row'] ?? 'products');
                 $name = trim((string) ($row['name'] ?? ''));
@@ -580,8 +588,25 @@ class ProductImportExportService
                     $product->update($productAttrs);
                     $updated++;
                 } else {
+                    if ($room !== null && $room < 1) {
+                        $skipped++;
+                        $errors[] = [
+                            'row' => $rowRef,
+                            'message' => PlanLimit::message(
+                                $planName,
+                                (int) $productLimit === 1 ? 'product' : 'products',
+                                (int) $productLimit,
+                                (int) $productLimit,
+                            ),
+                        ];
+
+                        continue;
+                    }
                     $product = Product::query()->create($productAttrs);
                     $created++;
+                    if ($room !== null) {
+                        $room--;
+                    }
                 }
 
                 $childRows = $variantsByProduct[$code] ?? [];

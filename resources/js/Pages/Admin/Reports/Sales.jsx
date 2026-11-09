@@ -25,7 +25,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
             csvRows={rows.map((s) => ({
                 number: s.number,
                 created_at: s.created_at,
-                cashier: s.cashier?.name || '',
+                cashier: s.cashier_name || '',
                 total: s.total,
                 paid_total: s.paid_total,
             }))}
@@ -89,7 +89,7 @@ export default function Sales({ sales, summary, filters, categories = [], branch
                             <tr key={s.id} className="border-t border-theme-border/80">
                                 <td className="px-4 py-2.5 font-mono text-xs text-theme-ink">{s.number}</td>
                                 <td className="px-4 py-2.5 text-theme-ink">{s.created_at}</td>
-                                <td className="px-4 py-2.5 text-theme-ink">{s.cashier?.name || '—'}</td>
+                                <td className="px-4 py-2.5 text-theme-ink">{s.cashier_name || '—'}</td>
                                 <td className="px-4 py-2.5 tabular-nums text-theme-ink">
                                     {formatAmount(s.total)}
                                 </td>

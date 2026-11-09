@@ -10,17 +10,22 @@ import {
     Clock3,
     ContactRound,
     CreditCard,
+    Landmark,
     LayoutDashboard,
+    Minus,
     Package,
     PanelLeft,
-    X,
-    Minus,
     Plus,
     Receipt,
+    Search,
     Settings,
     Store,
+    Tags,
+    Truck,
     UsersRound,
     Wallet,
+    Warehouse,
+    X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -34,18 +39,39 @@ const modules = [
         match: ['admin.dashboard'],
     },
     {
-        id: 'catalog',
-        labelKey: 'nav.catalog',
+        id: 'products',
+        type: 'link',
+        labelKey: 'nav.products',
         icon: Package,
-        match: ['admin.products', 'admin.brands', 'admin.categories', 'admin.units', 'admin.variations', 'admin.sections', 'admin.racks'],
+        href: 'admin.products.index',
+        match: ['admin.products'],
+    },
+    {
+        id: 'orders',
+        labelKey: 'nav.orders',
+        icon: Receipt,
+        match: ['admin.orders', 'admin.returns.sales', 'admin.quotations'],
         items: [
-            { href: 'admin.brands.index', labelKey: 'nav.brands' },
-            { href: 'admin.categories.index', labelKey: 'nav.categories' },
-            { href: 'admin.units.index', labelKey: 'nav.units' },
-            { href: 'admin.variations.index', labelKey: 'nav.variations' },
-            { href: 'admin.sections.index', labelKey: 'nav.sections' },
-            { href: 'admin.racks.index', labelKey: 'nav.racks' },
-            { href: 'admin.products.index', labelKey: 'nav.products' },
+            { href: 'admin.orders.index', labelKey: 'nav.orders' },
+            { href: 'admin.returns.sales.index', labelKey: 'nav.refund_orders' },
+            { href: 'admin.quotations.index', labelKey: 'nav.quotations' },
+        ],
+    },
+    {
+        id: 'stock',
+        labelKey: 'nav.stock',
+        icon: Warehouse,
+        match: [
+            'admin.inventory.stock',
+            'admin.inventory.low-stock',
+            'admin.inventory.product-ledger',
+            'admin.serials',
+        ],
+        items: [
+            { href: 'admin.inventory.stock', labelKey: 'nav.stock' },
+            { href: 'admin.inventory.low-stock', labelKey: 'nav.low_stock' },
+            { href: 'admin.inventory.product-ledger', labelKey: 'nav.product_ledger' },
+            { href: 'admin.serials.index', labelKey: 'nav.serials' },
         ],
     },
     {
@@ -60,52 +86,66 @@ const modules = [
         ],
     },
     {
-        id: 'orders',
-        labelKey: 'nav.orders',
-        icon: Receipt,
-        match: ['admin.orders', 'admin.returns.sales', 'admin.quotations'],
+        id: 'catalog',
+        labelKey: 'nav.catalog',
+        icon: Tags,
+        match: ['admin.catalog', 'admin.brands', 'admin.categories', 'admin.units', 'admin.variations', 'admin.sections', 'admin.racks'],
         items: [
-            { href: 'admin.orders.index', labelKey: 'nav.orders' },
-            { href: 'admin.returns.sales.index', labelKey: 'nav.refund_orders' },
-            { href: 'admin.quotations.index', labelKey: 'nav.quotations' },
+            { href: 'admin.brands.index', labelKey: 'nav.brands' },
+            { href: 'admin.categories.index', labelKey: 'nav.categories' },
+            { href: 'admin.units.index', labelKey: 'nav.units' },
+            { href: 'admin.variations.index', labelKey: 'nav.variations' },
+            { href: 'admin.sections.index', labelKey: 'nav.sections' },
+            { href: 'admin.racks.index', labelKey: 'nav.racks' },
         ],
     },
     {
-        id: 'inventory',
-        labelKey: 'nav.inventory',
-        icon: Boxes,
+        id: 'buying',
+        labelKey: 'nav.buying',
+        icon: Truck,
         match: [
-            'admin.inventory',
             'admin.purchases',
             'admin.returns.purchases',
-            'admin.serials',
+            'admin.inventory.adjustments',
+            'admin.inventory.damages',
+            'admin.inventory.transfers',
         ],
         items: [
-            { href: 'admin.inventory.stock', labelKey: 'nav.stock' },
-            { href: 'admin.inventory.low-stock', labelKey: 'nav.low_stock' },
-            { href: 'admin.inventory.product-ledger', labelKey: 'nav.product_ledger' },
             { href: 'admin.purchases.index', labelKey: 'nav.purchases' },
             { href: 'admin.returns.purchases.index', labelKey: 'nav.purchase_returns' },
             { href: 'admin.inventory.adjustments', labelKey: 'nav.adjustments' },
             { href: 'admin.inventory.damages', labelKey: 'nav.damage' },
             { href: 'admin.inventory.transfers', labelKey: 'nav.transfers' },
-            { href: 'admin.serials.index', labelKey: 'nav.serials' },
         ],
     },
     {
-        id: 'financials',
-        labelKey: 'nav.financials',
+        id: 'money',
+        labelKey: 'nav.money',
         icon: Wallet,
-        match: ['admin.finance'],
+        match: [
+            'admin.finance.expenses',
+            'admin.finance.customer-payments',
+            'admin.finance.supplier-payments',
+            'admin.finance.employee-payments',
+            'admin.finance.transactions',
+        ],
+        items: [
+            { href: 'admin.finance.expenses.index', labelKey: 'nav.expenses' },
+            { href: 'admin.finance.customer-payments.index', labelKey: 'nav.customer_payments' },
+            { href: 'admin.finance.supplier-payments.index', labelKey: 'nav.supplier_payments' },
+            { href: 'admin.finance.employee-payments.index', labelKey: 'nav.employee_payments' },
+            { href: 'admin.finance.transactions.index', labelKey: 'nav.transactions' },
+        ],
+    },
+    {
+        id: 'accounts',
+        labelKey: 'nav.accounts',
+        icon: Landmark,
+        match: ['admin.finance.accounts', 'admin.finance.taxes', 'admin.finance.money-sources'],
         items: [
             { href: 'admin.finance.accounts.index', labelKey: 'nav.accounts' },
             { href: 'admin.finance.taxes.index', labelKey: 'nav.taxes' },
             { href: 'admin.finance.money-sources.index', labelKey: 'nav.money_sources' },
-            { href: 'admin.finance.transactions.index', labelKey: 'nav.transactions' },
-            { href: 'admin.finance.expenses.index', labelKey: 'nav.expenses' },
-            { href: 'admin.finance.supplier-payments.index', labelKey: 'nav.supplier_payments' },
-            { href: 'admin.finance.customer-payments.index', labelKey: 'nav.customer_payments' },
-            { href: 'admin.finance.employee-payments.index', labelKey: 'nav.employee_payments' },
         ],
     },
     {
@@ -210,6 +250,24 @@ function moduleMatches(current, mod) {
     );
 }
 
+function filterModules(list, query, t) {
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.flatMap((mod) => {
+        const label = (mod.label || t(mod.labelKey) || '').toLowerCase();
+        if (mod.type === 'link') {
+            return label.includes(q) ? [mod] : [];
+        }
+        if (label.includes(q)) return [mod];
+        const items = (mod.items || []).filter((item) =>
+            (item.label || t(item.labelKey) || '').toLowerCase().includes(q),
+        );
+        if (items.length === 0) return [];
+        return [{ ...mod, items }];
+    });
+}
+
 function NavLink({ mod, current, t, collapsed = false }) {
     const Icon = mod.icon;
     const active = moduleMatches(current, mod);
@@ -289,6 +347,7 @@ export default function AdminLayout({
         }
     });
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [query, setQuery] = useState('');
     const [isDesktop, setIsDesktop] = useState(
         () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
     );
@@ -300,6 +359,12 @@ export default function AdminLayout({
         [addons?.nav],
     );
 
+    const searching = query.trim().length > 0;
+    const shownModules = useMemo(
+        () => (iconRail || !searching ? visibleModules : filterModules(visibleModules, query, t)),
+        [iconRail, searching, visibleModules, query, t],
+    );
+
     const activeId = useMemo(() => {
         const found = visibleModules.find((mod) => mod.type !== 'link' && moduleMatches(current, mod));
         return found?.id || null;
@@ -309,12 +374,7 @@ export default function AdminLayout({
 
     useEffect(() => {
         if (!activeId) return;
-        setOpenIds((prev) => {
-            if (prev.has(activeId)) return prev;
-            const next = new Set(prev);
-            next.add(activeId);
-            return next;
-        });
+        setOpenIds(new Set([activeId]));
     }, [activeId]);
 
     useEffect(() => {
@@ -351,12 +411,7 @@ export default function AdminLayout({
     }, [mobileOpen]);
 
     const toggle = (id) => {
-        setOpenIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+        setOpenIds((prev) => (prev.has(id) ? new Set() : new Set([id])));
     };
 
     return (
@@ -403,7 +458,23 @@ export default function AdminLayout({
                 </div>
 
                 <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                    {visibleModules.map((mod) =>
+                    {!iconRail && (
+                        <label className="relative mb-2 block px-1">
+                            <Search className="pointer-events-none absolute start-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-theme-ink-muted" strokeWidth={1.75} />
+                            <input
+                                type="search"
+                                value={query}
+                                onChange={(event) => setQuery(event.target.value)}
+                                placeholder={t('nav.search_menu')}
+                                aria-label={t('nav.search_menu')}
+                                className="w-full rounded-md border border-theme-border bg-theme-bg py-1.5 ps-8 pe-2 text-sm text-theme-ink outline-none placeholder:text-theme-ink-muted focus:border-theme-primary"
+                            />
+                        </label>
+                    )}
+                    {shownModules.length === 0 && (
+                        <p className="px-2 py-3 text-sm text-theme-ink-muted">{t('nav.no_matches')}</p>
+                    )}
+                    {shownModules.map((mod) =>
                         mod.type === 'link' ? (
                             <NavLink key={mod.id} mod={mod} current={current} t={t} collapsed={iconRail} />
                         ) : (
@@ -411,9 +482,13 @@ export default function AdminLayout({
                                 key={mod.id}
                                 mod={mod}
                                 current={current}
-                                open={!iconRail && openIds.has(mod.id)}
+                                open={!iconRail && (searching || openIds.has(mod.id))}
                                 onToggle={() => {
-                                    if (iconRail) setCollapsed(false);
+                                    if (iconRail) {
+                                        setCollapsed(false);
+                                        return;
+                                    }
+                                    if (searching) return;
                                     toggle(mod.id);
                                 }}
                                 t={t}

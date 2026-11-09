@@ -1,17 +1,23 @@
 import Drawer from '@/Components/Ui/Drawer';
 import Button from '@/Components/Ui/Button';
 import Input, { Field } from '@/Components/Ui/Input';
+import PlanAssignmentFields from '@/Pages/Platform/Tenants/PlanAssignmentFields';
 import { router, useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 
 const selectClass =
     'w-full rounded-lg border border-theme-border bg-theme-surface px-3.5 py-2.5 text-sm text-theme-ink outline-none transition focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
 
-export default function TenantManageDrawer({ open, onClose, tenant }) {
+export default function TenantManageDrawer({ open, onClose, tenant, formMeta = {} }) {
     const form = useForm({
-        plan: 'starter',
+        plan_id: '',
+        billing_interval: 'monthly',
         billing_status: 'trial',
         monthly_fee: 0,
+        override_limits: false,
+        product_limit: '',
+        user_limit: '',
+        branch_limit: '',
         trial_ends_at: '',
         billing_notes: '',
         is_active: true,
@@ -22,9 +28,14 @@ export default function TenantManageDrawer({ open, onClose, tenant }) {
         if (!open || !tenant) return;
         form.clearErrors();
         form.setData({
-            plan: tenant.plan || 'starter',
+            plan_id: tenant.plan_id || '',
+            billing_interval: tenant.billing_interval || 'monthly',
             billing_status: tenant.billing_status || 'trial',
             monthly_fee: tenant.monthly_fee ?? 0,
+            override_limits: !!tenant.override_limits,
+            product_limit: tenant.product_limit ?? '',
+            user_limit: tenant.user_limit ?? '',
+            branch_limit: tenant.branch_limit ?? '',
             trial_ends_at: tenant.trial_ends_at || '',
             billing_notes: '',
             is_active: !!tenant.is_active,
@@ -49,16 +60,14 @@ export default function TenantManageDrawer({ open, onClose, tenant }) {
             onClose={onClose}
             title={`Manage · ${tenant.code}`}
             description={tenant.name}
-            width="sm"
+            width="lg"
         >
             <form onSubmit={submit} className="space-y-4">
-                <Field label="Plan" required error={form.errors.plan}>
-                    <Input
-                        value={form.data.plan}
-                        onChange={(e) => form.setData('plan', e.target.value)}
-                        error={!!form.errors.plan}
-                    />
-                </Field>
+                <PlanAssignmentFields
+                    form={form}
+                    plans={formMeta.plans || []}
+                    intervals={formMeta.billing_intervals || []}
+                />
                 <Field label="Billing status" required>
                     <select
                         className={selectClass}
@@ -71,16 +80,6 @@ export default function TenantManageDrawer({ open, onClose, tenant }) {
                             </option>
                         ))}
                     </select>
-                </Field>
-                <Field label="Monthly fee" required error={form.errors.monthly_fee}>
-                    <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={form.data.monthly_fee}
-                        onChange={(e) => form.setData('monthly_fee', e.target.value)}
-                        error={!!form.errors.monthly_fee}
-                    />
                 </Field>
                 <Field label="Trial ends">
                     <Input

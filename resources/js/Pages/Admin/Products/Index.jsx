@@ -6,13 +6,15 @@ import SortableTh from '@/Components/Ui/SortableTh';
 import ProductExportMenu from '@/Pages/Admin/Products/ProductExportMenu';
 import ProductImportDrawer from '@/Pages/Admin/Products/ProductImportDrawer';
 import { confirmDelete } from '@/lib/confirm';
+import { PlanCapNote, planResource } from '@/lib/planCap.jsx';
 import { formatAmount } from '@/lib/money';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Copy, ImagePlus, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Index({ products, filters }) {
-    const { flash } = usePage().props;
+    const { flash, plan, errors: pageErrors } = usePage().props;
+    const productCap = planResource(plan, 'product');
     const importResult =
         flash?.import_result?.entity === 'products' ? flash.import_result : null;
 
@@ -70,16 +72,30 @@ export default function Index({ products, filters }) {
                         Import
                     </Button>
                     <ProductExportMenu />
-                    <Link href={route('admin.products.create')}>
-                        <Button>
+                    {productCap.full ? (
+                        <Button disabled title={productCap.text}>
                             <Plus className="h-4 w-4" strokeWidth={2.25} />
                             Add Product
                         </Button>
-                    </Link>
+                    ) : (
+                        <Link href={route('admin.products.create')}>
+                            <Button>
+                                <Plus className="h-4 w-4" strokeWidth={2.25} />
+                                Add Product
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             }
         >
             <Head title="Products" />
+
+            <PlanCapNote plan={plan} resource="product" />
+            {pageErrors?.product && (
+                <p className="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-900">
+                    {pageErrors.product}
+                </p>
+            )}
 
             <div className="dp-card overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-theme-border px-4 py-3">
@@ -246,9 +262,11 @@ export default function Index({ products, filters }) {
                                             </Link>
                                             <button
                                                 type="button"
-                                                title="Duplicate"
+                                                title={productCap.full ? productCap.text : 'Duplicate'}
                                                 aria-label="Duplicate"
+                                                disabled={productCap.full}
                                                 onClick={() => {
+                                                    if (productCap.full) return;
                                                     router.post(
                                                         route('admin.products.duplicate', product.id),
                                                         {},

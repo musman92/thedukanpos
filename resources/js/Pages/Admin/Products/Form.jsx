@@ -5,7 +5,8 @@ import ImageUploadField from '@/Components/Ui/ImageUploadField';
 import Input, { Field } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
 import SlotHost from '@/Components/Addons/SlotHost';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { PlanCapNote } from '@/lib/planCap.jsx';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 const KIND_OPTIONS = [
@@ -74,6 +75,7 @@ function revokePreview(url) {
 }
 
 export default function Form({ product, options, branchId }) {
+    const { plan } = usePage().props;
     const editing = !!product;
     const initialType = product?.type || (product?.variants?.length > 1 ? 'variant' : 'single');
     const units = options.units || [];
@@ -278,6 +280,12 @@ export default function Form({ product, options, branchId }) {
             <Head title={editing ? 'Edit product' : 'New product'} />
 
             <form onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
+                {!editing && <PlanCapNote plan={plan} resource="product" />}
+                {errors.product && (
+                    <p className="rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-900">
+                        {errors.product}
+                    </p>
+                )}
                 <div className="space-y-4 rounded-xl border border-theme-border bg-theme-surface p-5">
                     <p className="text-xs font-semibold uppercase tracking-wide text-theme-ink-muted">
                         Basic info

@@ -426,7 +426,7 @@ class AttendanceService
     /**
      * @return array<string, mixed>
      */
-    protected function serialize(AttendanceRecord $record): array
+    public function serialize(AttendanceRecord $record): array
     {
         return [
             'id' => $record->id,

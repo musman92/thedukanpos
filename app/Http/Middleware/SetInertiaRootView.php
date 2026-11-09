@@ -17,7 +17,7 @@ class SetInertiaRootView
         } elseif ($request->is('admin') || $request->is('admin/*')) {
             Inertia::setRootView('app');
             view()->share('viteEntry', 'resources/js/admin.jsx');
-        } elseif ($request->is('login') || $request->is('forgot-password') || $request->is('reset-password') || $request->is('reset-password/*')) {
+        } elseif ($request->is('login') || $request->is('register') || $request->is('forgot-password') || $request->is('reset-password') || $request->is('reset-password/*')) {
             Inertia::setRootView('app');
             view()->share('viteEntry', 'resources/js/auth.jsx');
         } elseif ($request->is('pos') || $request->is('pos/*')) {

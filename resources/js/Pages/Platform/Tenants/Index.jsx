@@ -239,12 +239,20 @@ export default function Index({
                                             )}
                                         </span>
                                     </td>
-                                    <td className="px-3 py-3 text-theme-ink-soft">{tenant.plan}</td>
+                                    <td className="px-3 py-3 text-theme-ink-soft">
+                                        {tenant.plan_name || tenant.plan || '—'}
+                                        {tenant.override_limits && (
+                                            <div className="text-[11px] text-theme-ink-muted">Custom limits</div>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-3">
                                         <BillingBadge status={tenant.billing_status} />
                                     </td>
                                     <td className="px-3 py-3 tabular-nums text-theme-ink">
                                         {Number(tenant.monthly_fee || 0).toFixed(2)}
+                                        <div className="text-[11px] capitalize text-theme-ink-muted">
+                                            {tenant.billing_interval || 'monthly'}
+                                        </div>
                                     </td>
                                     <td className="px-3 py-3">
                                         <StatusBadge active={!!tenant.is_active} />

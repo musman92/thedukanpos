@@ -281,10 +281,25 @@ export default function Show({
                             </h2>
                         </div>
                         <dl className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
-                            <Info label="Plan">{tenant.plan}</Info>
+                            <Info label="Plan">{tenant.plan_name || tenant.plan}</Info>
                             <Info label="Billing status">{tenant.billing_status}</Info>
-                            <Info label="Monthly fee">
+                            <Info label="Billing period">
+                                <span className="capitalize">{tenant.billing_interval || 'monthly'}</span>
+                            </Info>
+                            <Info label="Amount">
                                 {Number(tenant.monthly_fee || 0).toFixed(2)}
+                            </Info>
+                            <Info label="Products">
+                                {tenant.limits?.product_limit ?? 'No cap'}
+                                {tenant.override_limits ? ' (custom)' : ''}
+                            </Info>
+                            <Info label="Users">
+                                {tenant.limits?.user_limit ?? 'No cap'}
+                                {tenant.override_limits ? ' (custom)' : ''}
+                            </Info>
+                            <Info label="Branches">
+                                {tenant.limits?.branch_limit ?? 'No cap'}
+                                {tenant.override_limits ? ' (custom)' : ''}
                             </Info>
                             <Info label="Trial ends">{tenant.trial_ends_at}</Info>
                             <Info label="Billing notes">{tenant.billing_notes}</Info>

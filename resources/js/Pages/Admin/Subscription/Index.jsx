@@ -44,6 +44,11 @@ function InvoiceStatusBadge({ status }) {
     );
 }
 
+function limitText(value) {
+    if (value === null || value === undefined || value === '') return 'No cap';
+    return String(value);
+}
+
 function Info({ label, children }) {
     return (
         <div>
@@ -112,14 +117,20 @@ export default function Index({ subscription, invoices, filters }) {
                             </span>
                         </Info>
                         <Info label="Plan">
-                            <span className="capitalize">{subscription?.plan || '—'}</span>
+                            <span className="capitalize">{subscription?.plan_name || subscription?.plan || '—'}</span>
                         </Info>
                         <Info label="Billing status">
                             <BillingBadge status={subscription?.billing_status} />
                         </Info>
-                        <Info label="Monthly fee">
+                        <Info label="Billing period">
+                            <span className="capitalize">{subscription?.billing_interval || 'monthly'}</span>
+                        </Info>
+                        <Info label="Amount">
                             {formatMoney(subscription?.monthly_fee, moneyCfg)}
                         </Info>
+                        <Info label="Products">{limitText(subscription?.product_limit)}</Info>
+                        <Info label="Users">{limitText(subscription?.user_limit)}</Info>
+                        <Info label="Branches">{limitText(subscription?.branch_limit)}</Info>
                         <Info label="Trial ends">{subscription?.trial_ends_at}</Info>
                         <Info label="Open invoices">
                             {subscription?.open_invoice_count || 0}

@@ -6,7 +6,7 @@ import Input, { Field, TextArea } from '@/Components/Ui/Input';
 import SearchableSelect from '@/Components/Ui/SearchableSelect';
 import { useI18n } from '@/hooks/useI18n';
 import { formatMoney } from '@/lib/money';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 const TABS = [
@@ -190,6 +190,7 @@ function shouldReloadAfterSave(previousSettings, nextData) {
 
 export default function Edit({ settings, section = 'general', options = {} }) {
     const { t } = useI18n();
+    const shopCode = usePage().props.tenant?.code || '';
     const active = TABS.some((tab) => tab.id === section) ? section : 'general';
     const form = useForm(dataFromSettings(settings));
     const [previewUrl, setPreviewUrl] = useState(settings.logo_url || null);
@@ -337,6 +338,12 @@ export default function Edit({ settings, section = 'general', options = {} }) {
                                     onChange={(e) => form.setData('shop_name', e.target.value)}
                                     error={!!form.errors.shop_name}
                                 />
+                            </Field>
+                            <Field
+                                label="Shop code"
+                                hint="Used to sign in. This code cannot be changed."
+                            >
+                                <Input value={shopCode} disabled readOnly />
                             </Field>
                             <Field label="Email" error={form.errors.email}>
                                 <Input

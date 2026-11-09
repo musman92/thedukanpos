@@ -352,7 +352,7 @@ class TransactionService
     /**
      * @return array<string, mixed>
      */
-    protected function serialize(LedgerTransaction $txn): array
+    public function serialize(LedgerTransaction $txn): array
     {
         return [
             'id' => $txn->id,

@@ -17,6 +17,8 @@ use Illuminate\Validation\ValidationException;
 
 class BranchService
 {
+    public function __construct(protected PlanService $plans) {}
+
     /**
      * @param  array{q?:string|null, per_page?:int|string|null, sort?:string|null, direction?:string|null}  $filters
      * @return array{branches: LengthAwarePaginator, filters: array{q: string, per_page: int, company_page_limit: int, sort: string, direction: string}}
@@ -83,6 +85,7 @@ class BranchService
      */
     public function create(array $data): Branch
     {
+        $this->plans->assertRoom('branch', 'branch');
         $name = trim((string) $data['name']);
         $code = Branch::resolveCode($data['code'] ?? null);
         $this->assertNameAvailable($name);

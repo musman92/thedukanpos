@@ -5,11 +5,13 @@ import Pagination from '@/Components/Ui/Pagination';
 import SortableTh from '@/Components/Ui/SortableTh';
 import UserFormDrawer from '@/Pages/Admin/Users/UserFormDrawer';
 import { confirmDelete } from '@/lib/confirm';
-import { Head, router } from '@inertiajs/react';
+import { PlanCapNote } from '@/lib/planCap.jsx';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Index({ users, filters, roles = [], branches = [] }) {
+    const { plan } = usePage().props;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [q, setQ] = useState(filters.q || '');
@@ -75,6 +77,8 @@ export default function Index({ users, filters, roles = [], branches = [] }) {
             }
         >
             <Head title="Users" />
+
+            <PlanCapNote plan={plan} resource="user" />
 
             <div className="dp-card overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-theme-border px-4 py-3">

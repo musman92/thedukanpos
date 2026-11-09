@@ -266,7 +266,7 @@ class MoneySourceService
     /**
      * @return array<string, mixed>
      */
-    protected function serializeSource(MoneySource $source): array
+    public function serializeSource(MoneySource $source): array
     {
         return [
             'id' => $source->id,

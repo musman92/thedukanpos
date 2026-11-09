@@ -8,6 +8,7 @@ use App\Models\SupportLoginToken;
 use App\Models\Tenant;
 use App\Services\AddonProvisionService;
 use App\Services\DemoSeedService;
+use App\Services\PlanService;
 use App\Services\SettingService;
 use App\Services\TenantBackupService;
 use App\Services\TenantResetService;
@@ -24,6 +25,8 @@ use Inertia\Response;
 
 class TenantController extends Controller
 {
+    public function __construct(protected PlanService $plans) {}
+
     public function index(Request $request): Response
     {
         $q = trim((string) $request->input('q', ''));
@@ -43,6 +46,7 @@ class TenantController extends Controller
         );
 
         $tenants = Tenant::query()
+            ->with('planRecord')
             ->when($q !== '', function (Builder $query) use ($q) {
                 $query->where(function (Builder $inner) use ($q) {
                     $inner->where('code', 'like', "%{$q}%")
@@ -82,6 +86,8 @@ class TenantController extends Controller
 
     public function show(Tenant $tenant): Response
     {
+        $tenant->load('planRecord');
+
         return Inertia::render('Platform/Tenants/Show', [
             'tenant' => $this->tenantPayload($tenant),
             'demo_seed' => app(DemoSeedService::class)->status($tenant),
@@ -135,9 +141,8 @@ class TenantController extends Controller
             'status' => ['required', 'in:active,suspended,inactive'],
             'trial_days' => ['nullable', 'integer', 'in:0,7,14,30,60,90'],
             'trial_ends_at' => ['nullable', 'date'],
-            'plan' => ['nullable', 'string', 'max:50'],
-            'monthly_fee' => ['nullable', 'numeric', 'min:0'],
             'billing_notes' => ['nullable', 'string'],
+            ...$this->plans->assignmentRules(),
             'admin_name' => ['required', 'string', 'max:255'],
             'admin_email' => ['required', 'email', 'max:255'],
             'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -176,9 +181,8 @@ class TenantController extends Controller
             'timezone' => $timezone,
             'is_active' => $isActive,
             'is_demo' => $request->boolean('is_demo'),
-            'plan' => $data['plan'] ?? 'starter',
+            ...$this->plans->assignment($data),
             'billing_status' => $billingStatus,
-            'monthly_fee' => $data['monthly_fee'] ?? 0,
             'trial_ends_at' => $trialEndsAt,
             'billing_notes' => $data['billing_notes'] ?? null,
         ]);
@@ -226,10 +230,9 @@ class TenantController extends Controller
             'currency' => ['nullable', 'string', 'size:3', Rule::in(SettingService::CURRENCIES)],
             'timezone' => ['nullable', 'string', 'timezone'],
             'status' => ['required', 'in:active,suspended,inactive'],
-            'plan' => ['nullable', 'string', 'max:50'],
             'billing_status' => ['nullable', 'in:trial,active,past_due,cancelled'],
-            'monthly_fee' => ['nullable', 'numeric', 'min:0'],
             'trial_ends_at' => ['nullable', 'date'],
+            ...$this->plans->assignmentRules(),
             'billing_notes' => ['nullable', 'string'],
             'is_demo' => ['boolean'],
         ]);
@@ -252,9 +255,8 @@ class TenantController extends Controller
             'timezone' => (string) ($data['timezone'] ?? $tenant->timezone ?? 'Asia/Karachi'),
             'is_active' => $isActive,
             'is_demo' => $request->boolean('is_demo'),
-            'plan' => $data['plan'] ?? $tenant->plan,
+            ...$this->plans->assignment($data),
             'billing_status' => $data['billing_status'] ?? $tenant->billing_status,
-            'monthly_fee' => $data['monthly_fee'] ?? $tenant->monthly_fee,
             'trial_ends_at' => $data['trial_ends_at'] ?? null,
             'billing_notes' => $data['billing_notes'] ?? null,
         ]);
@@ -267,17 +269,19 @@ class TenantController extends Controller
     public function updateBilling(Request $request, Tenant $tenant): RedirectResponse
     {
         $data = $request->validate([
-            'plan' => ['required', 'string', 'max:50'],
             'billing_status' => ['required', 'in:trial,active,past_due,cancelled'],
-            'monthly_fee' => ['required', 'numeric', 'min:0'],
             'trial_ends_at' => ['nullable', 'date'],
             'billing_notes' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'is_demo' => ['boolean'],
+            ...$this->plans->assignmentRules(),
         ]);
 
         $tenant->update([
-            ...$data,
+            'billing_status' => $data['billing_status'],
+            'trial_ends_at' => $data['trial_ends_at'] ?? null,
+            'billing_notes' => $data['billing_notes'] ?? null,
+            ...$this->plans->assignment($data),
             'is_active' => $request->boolean('is_active', $tenant->is_active),
             'is_demo' => $request->boolean('is_demo', $tenant->is_demo),
         ]);
@@ -449,8 +453,16 @@ class TenantController extends Controller
             'currency' => $t->currency ?: 'PKR',
             'timezone' => $t->timezone ?: 'Asia/Karachi',
             'plan' => $t->plan,
+            'plan_id' => $t->plan_id,
+            'plan_name' => $t->planRecord?->name ?: ($t->plan ? ucfirst((string) $t->plan) : null),
             'billing_status' => $t->billing_status,
+            'billing_interval' => $t->billing_interval ?: 'monthly',
             'monthly_fee' => round((float) $t->monthly_fee, 2),
+            'override_limits' => (bool) $t->override_limits,
+            'product_limit' => $t->override_limits ? $t->product_limit : null,
+            'user_limit' => $t->override_limits ? $t->user_limit : null,
+            'branch_limit' => $t->override_limits ? $t->branch_limit : null,
+            'limits' => $this->plans->effectiveLimits($t),
             'trial_ends_at' => optional($t->trial_ends_at)?->toDateString(),
             'billing_notes' => $t->billing_notes,
             'is_active' => (bool) $t->is_active,
@@ -477,6 +489,12 @@ class TenantController extends Controller
                 ['value' => 90, 'label' => '90 days'],
             ],
             'default_trial_days' => 14,
+            'plans' => $this->plans->options(),
+            'billing_intervals' => [
+                ['value' => 'monthly', 'label' => 'Monthly'],
+                ['value' => 'quarterly', 'label' => 'Quarterly'],
+                ['value' => 'yearly', 'label' => 'Yearly'],
+            ],
         ];
     }
 

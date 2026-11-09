@@ -12,6 +12,7 @@ import {
     Settings,
     Square,
     Store,
+    User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -206,6 +207,14 @@ function UserMenu({ user, tenant, t, showPos = true }) {
                         >
                             <LayoutDashboard className="h-4 w-4" strokeWidth={1.75} />
                             {t('header.dashboard')}
+                        </Link>
+                        <Link
+                            href={route('admin.profile.edit')}
+                            className="flex min-h-11 items-center gap-2.5 px-3.5 py-2 text-sm text-theme-ink-soft hover:bg-theme-bg hover:text-theme-ink"
+                            onClick={() => setOpen(false)}
+                        >
+                            <User className="h-4 w-4" strokeWidth={1.75} />
+                            {t('header.profile')}
                         </Link>
                         <Link
                             href={route('admin.settings.edit')}

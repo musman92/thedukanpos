@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAddonActive;
+use App\Http\Middleware\EnsureApiPermission;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\InitializeTenancyByHeader;
 use App\Http\Middleware\InitializeTenancyByPathCode;
@@ -26,9 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Tenancy must run after the session starts and before Authenticate /
         // HandleInertiaRequests resolve Auth::user() (users live in tenant DBs).
+        // The phone sends X-Tenant-Code. That switch has to happen before
+        // Sanctum reads personal_access_tokens, which lives in the shop DB.
         $middleware->prependToPriorityList(
             before: AuthenticatesRequests::class,
             prepend: InitializeTenancyBySession::class,
+        );
+        $middleware->prependToPriorityList(
+            before: AuthenticatesRequests::class,
+            prepend: InitializeTenancyByHeader::class,
         );
 
         $middleware->web(append: [
@@ -44,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenancy.header' => InitializeTenancyByHeader::class,
             'tenancy.path' => InitializeTenancyByPathCode::class,
             'addon.active' => EnsureAddonActive::class,
+            'api.permission' => EnsureApiPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

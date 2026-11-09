@@ -1,6 +1,10 @@
 import Drawer from '@/Components/Ui/Drawer';
 import Button from '@/Components/Ui/Button';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
+import PlanAssignmentFields, {
+    defaultPlanId,
+    planPrice,
+} from '@/Pages/Platform/Tenants/PlanAssignmentFields';
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 
@@ -19,9 +23,14 @@ const defaultForm = {
     status: 'active',
     trial_days: 14,
     trial_ends_at: '',
-    plan: 'starter',
+    plan_id: '',
+    billing_interval: 'monthly',
     billing_status: 'trial',
     monthly_fee: 0,
+    override_limits: false,
+    product_limit: '',
+    user_limit: '',
+    branch_limit: '',
     billing_notes: '',
     admin_name: '',
     admin_email: '',
@@ -45,9 +54,14 @@ function tenantToForm(tenant) {
         timezone: tenant.timezone || 'Asia/Karachi',
         status: tenant.status || (tenant.is_active ? 'active' : 'suspended'),
         trial_ends_at: tenant.trial_ends_at || '',
-        plan: tenant.plan || 'starter',
+        plan_id: tenant.plan_id || '',
+        billing_interval: tenant.billing_interval || 'monthly',
         billing_status: tenant.billing_status || 'trial',
         monthly_fee: tenant.monthly_fee ?? 0,
+        override_limits: !!tenant.override_limits,
+        product_limit: tenant.product_limit ?? '',
+        user_limit: tenant.user_limit ?? '',
+        branch_limit: tenant.branch_limit ?? '',
         billing_notes: tenant.billing_notes || '',
         is_demo: !!tenant.is_demo,
     };
@@ -68,12 +82,18 @@ export default function TenantFormDrawer({ open, onClose, formMeta = {}, tenant 
         { value: 90, label: '90 days' },
     ];
     const defaultTrialDays = formMeta.default_trial_days ?? 14;
+    const plans = formMeta.plans || [];
+    const intervals = formMeta.billing_intervals || [];
 
     const initial = useMemo(() => {
         if (tenant) return tenantToForm(tenant);
+        const planId = defaultPlanId(plans);
+        const plan = plans.find((item) => String(item.id) === String(planId));
         return {
             ...defaultForm,
             trial_days: defaultTrialDays,
+            plan_id: planId,
+            monthly_fee: planPrice(plan, 'monthly'),
             currency: currencies.includes('PKR') ? 'PKR' : currencies[0] || 'PKR',
             timezone: timezones[0]?.value || 'Asia/Karachi',
         };
@@ -285,29 +305,7 @@ export default function TenantFormDrawer({ open, onClose, formMeta = {}, tenant 
                             error={!!form.errors.trial_ends_at}
                         />
                     </Field>
-                    <Field label="Plan" error={form.errors.plan}>
-                        <Input
-                            value={form.data.plan}
-                            onChange={(e) => form.setData('plan', e.target.value)}
-                            error={!!form.errors.plan}
-                            placeholder="starter"
-                        />
-                    </Field>
-                    <Field
-                        label="Amount per interval"
-                        error={form.errors.monthly_fee}
-                        hint="Monthly fee after trial. Use 0 for complimentary."
-                    >
-                        <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={form.data.monthly_fee}
-                            onChange={(e) => form.setData('monthly_fee', e.target.value)}
-                            error={!!form.errors.monthly_fee}
-                            placeholder="e.g. 99"
-                        />
-                    </Field>
+                    <PlanAssignmentFields form={form} plans={plans} intervals={intervals} />
                     <Field
                         label="Billing notes"
                         error={form.errors.billing_notes}

@@ -23,8 +23,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Web: login = "admin@shop1"
-            // API: login OR (username + tenant_code)
+            // Combined "username@shopcode", or username plus tenant_code.
             'login' => ['nullable', 'string'],
             'username' => ['nullable', 'string'],
             'tenant_code' => ['nullable', 'string'],
@@ -44,7 +43,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'login' => __('Shop code not found or inactive.'),
+                $this->usesCombinedLogin() ? 'login' : 'tenant_code' => __('Shop code not found or inactive.'),
             ]);
         }
 
@@ -58,7 +57,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'login' => __('These credentials do not match our records.'),
+                $this->usesCombinedLogin() ? 'login' : 'password' => __('These credentials do not match our records.'),
             ]);
         }
 
@@ -102,13 +101,23 @@ class LoginRequest extends FormRequest
         $username = strtolower(trim((string) $this->input('username', '')));
         $tenantCode = strtolower(trim((string) $this->input('tenant_code', '')));
 
-        if ($username === '' || $tenantCode === '') {
-            throw ValidationException::withMessages([
-                'login' => __('Use username@shopcode (e.g. admin@shop1).'),
-            ]);
+        $messages = [];
+        if ($tenantCode === '') {
+            $messages['tenant_code'] = __('Enter the shop code.');
+        }
+        if ($username === '') {
+            $messages['username'] = __('Enter the username.');
+        }
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
         }
 
         return [$username, $tenantCode];
+    }
+
+    protected function usesCombinedLogin(): bool
+    {
+        return trim((string) $this->input('login', '')) !== '';
     }
 
     public function ensureIsNotRateLimited(): void

@@ -76,6 +76,11 @@ export default function BranchFormDrawer({ open, branch = null, onClose }) {
         >
             <form onSubmit={submit} className="flex h-full flex-col">
                 <div className="space-y-4">
+                    {form.errors.branch && (
+                        <p className="rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-900">
+                            {form.errors.branch}
+                        </p>
+                    )}
                     <Field label="Name" required error={form.errors.name}>
                         <Input
                             value={form.data.name}

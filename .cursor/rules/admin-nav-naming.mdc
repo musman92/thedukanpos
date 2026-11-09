@@ -10,8 +10,8 @@ alwaysApply: true
 | Screen type | Label form | Examples |
 |-------------|------------|----------|
 | List of many records (CRUD / tables) | **Plural** | Brands, Products, Customers, Suppliers, Users, Branches, Leaves |
-| Concept, tool, or process | **Singular or short phrase** | Dashboard, Inventory, Attendance, Payroll, Settings, Stock on hand |
-| Nav group titles | Singular concept or short label | Catalog, Inventory, Financials, HR, Settings |
+| Concept, tool, or process | **Singular or short phrase** | Dashboard, Stock, Attendance, Payroll, Settings, Stock on hand |
+| Nav group titles | Singular concept or short label | Catalog, Stock, Buying, Money, Accounts, HR, Settings |
 
 If the page is mainly a table of entities → plural. If it is a workspace or topic → singular / phrase.
 

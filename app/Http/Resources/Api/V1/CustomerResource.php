@@ -22,6 +22,7 @@ class CustomerResource extends JsonResource
             'address' => $this->address,
             'balance' => (float) $this->balance,
             'is_active' => (bool) $this->is_active,
+            'is_system' => (bool) $this->is_system,
             'sales_count' => (int) ($this->sales_count ?? 0),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

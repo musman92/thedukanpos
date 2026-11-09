@@ -254,7 +254,7 @@ class EmployeePaymentService
     /**
      * @return array<string, mixed>
      */
-    protected function serialize(EmployeePayment $payment): array
+    public function serialize(EmployeePayment $payment): array
     {
         $kind = $payment->kind ?: 'wage';
 

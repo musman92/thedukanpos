@@ -15,7 +15,10 @@ use Spatie\Permission\Models\Role;
 
 class UserService
 {
-    public function __construct(protected HrService $hr) {}
+    public function __construct(
+        protected HrService $hr,
+        protected PlanService $plans,
+    ) {}
 
     /**
      * @param  array{q?:string|null, per_page?:int|string|null, sort?:string|null, direction?:string|null}  $filters
@@ -92,6 +95,11 @@ class UserService
             $canLogin = (bool) ($data['can_login'] ?? true);
             $isEmployee = (bool) ($data['is_employee'] ?? false);
 
+            $isActive = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true;
+            if ($canLogin && $isActive) {
+                $this->plans->assertRoom('user', 'user');
+            }
+
             $username = $canLogin
                 ? strtolower(trim((string) $data['username']))
                 : $this->generateUsername($data['name'] ?? 'user');
@@ -118,7 +126,7 @@ class UserService
                 'email' => $this->nullableString($data['email'] ?? null),
                 'phone' => $this->nullableString($data['phone'] ?? null),
                 'password' => Hash::make($password),
-                'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+                'is_active' => $isActive,
                 'can_login' => $canLogin,
                 'branch_id' => $data['branch_id'] ?? null,
             ]);
@@ -154,11 +162,18 @@ class UserService
                 ? (bool) $data['is_employee']
                 : $user->employeeProfile()->exists();
 
+            $isActive = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : (bool) $user->is_active;
+            $willUseSeat = $canLogin && $isActive;
+            $usesSeat = (bool) $user->can_login && (bool) $user->is_active;
+            if ($willUseSeat && ! $usesSeat) {
+                $this->plans->assertRoom('user', 'user');
+            }
+
             $payload = [
                 'name' => trim((string) $data['name']),
                 'email' => $this->nullableString($data['email'] ?? null),
                 'phone' => $this->nullableString($data['phone'] ?? null),
-                'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $user->is_active,
+                'is_active' => $isActive,
                 'can_login' => $canLogin,
                 'branch_id' => $data['branch_id'] ?? null,
             ];
@@ -338,6 +353,48 @@ class UserService
         }
 
         return $candidate;
+    }
+
+    /**
+     * @param  array{name:string, email?:string|null, phone?:string|null}  $data
+     */
+    public function updateOwnProfile(User $user, array $data): User
+    {
+        $user->update([
+            'name' => trim((string) $data['name']),
+            'email' => $this->nullableString($data['email'] ?? null),
+            'phone' => $this->nullableString($data['phone'] ?? null),
+        ]);
+
+        return $user->fresh();
+    }
+
+    public function changeOwnPassword(User $user, string $currentPassword, string $password): void
+    {
+        if (! Hash::check($currentPassword, (string) $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'The current password is incorrect.',
+            ]);
+        }
+
+        $user->update([
+            'password' => $password,
+        ]);
+    }
+
+    /**
+     * @return array{id:int, name:string, username:?string, email:?string, phone:?string, role:?string}
+     */
+    public function profilePayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->getRoleNames()->first(),
+        ];
     }
 
     protected function assertUsernameAvailable(string $username, ?int $ignoreId = null): void

@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\InventoryStockController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\QuotationController;
 use App\Http\Controllers\Admin\RackController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\Platform\AddonController;
 use App\Http\Controllers\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Platform\InvoiceController as PlatformInvoiceController;
+use App\Http\Controllers\Platform\PlanController as PlatformPlanController;
 use App\Http\Controllers\Platform\TenantController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SupportLoginController;
@@ -71,6 +73,10 @@ Route::middleware(['tenancy.session', 'auth'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', DashboardController::class)->name('dashboard');
+
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
         Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
         Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
@@ -340,6 +346,11 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::post('/logout', [PlatformAuthController::class, 'destroy'])->name('logout');
         Route::get('/', PlatformDashboardController::class)->name('dashboard');
         Route::get('/dashboard', PlatformDashboardController::class);
+        Route::get('/plans', [PlatformPlanController::class, 'index'])->name('plans.index');
+        Route::post('/plans', [PlatformPlanController::class, 'store'])->name('plans.store');
+        Route::put('/plans/{plan}', [PlatformPlanController::class, 'update'])->name('plans.update');
+        Route::delete('/plans/{plan}', [PlatformPlanController::class, 'destroy'])->name('plans.destroy');
+
         Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
         Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
         Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');

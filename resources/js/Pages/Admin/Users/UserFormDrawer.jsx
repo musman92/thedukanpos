@@ -115,6 +115,11 @@ export default function UserFormDrawer({
         >
             <form onSubmit={submit} className="flex h-full flex-col">
                 <div className="space-y-5">
+                    {form.errors.user && (
+                        <p className="rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-900">
+                            {form.errors.user}
+                        </p>
+                    )}
                     <section className="space-y-4">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-theme-ink-muted">
                             Identity

@@ -1,0 +1,1 @@
+import{j as s}from"./boot-C2td4yqR.js";function r({value:t,className:e="",children:m,...n}){return s.jsx("label",{...n,className:"block text-sm font-medium text-theme-ink "+e,children:t||m})}export{r as I};

@@ -33,6 +33,7 @@ class ProductService
     public function __construct(
         protected InventoryService $inventory,
         protected ImageUploadService $images,
+        protected PlanService $plans,
     ) {}
 
     /**
@@ -98,6 +99,7 @@ class ProductService
      */
     public function create(array $payload, ?int $branchId = null): Product
     {
+        $this->plans->assertRoom('product', 'product');
         $branchId ??= BranchContext::ensure()->id;
         [$productData, $variants] = $this->preparePayload($payload['product'], $payload['variants']);
         $this->assertProductCodeAvailable($productData['short_code']);
@@ -168,6 +170,7 @@ class ProductService
      */
     public function duplicate(Product $product, ?int $branchId = null): Product
     {
+        $this->plans->assertRoom('product', 'product');
         $branchId ??= BranchContext::ensure()->id;
 
         $product->load([

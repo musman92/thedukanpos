@@ -203,7 +203,7 @@ class PayrollAdjustmentService
     /**
      * @return array<string, mixed>
      */
-    protected function serialize(PayrollAdjustment $adj): array
+    public function serialize(PayrollAdjustment $adj): array
     {
         return [
             'id' => $adj->id,
