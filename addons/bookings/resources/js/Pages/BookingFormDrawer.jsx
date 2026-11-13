@@ -1,7 +1,7 @@
 import Button from '@/Components/Ui/Button';
 import Drawer from '@/Components/Ui/Drawer';
 import Input, { Field, TextArea } from '@/Components/Ui/Input';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 
 const selectClass =
@@ -11,10 +11,13 @@ const empty = {
     product_id: '',
     customer_name: '',
     customer_phone: '',
+    customer_email: '',
     address: '',
     notes: '',
     scheduled_at: '',
     status: 'pending',
+    assigned_user_id: '',
+    branch_id: '',
 };
 
 function phoneDigits(value) {
@@ -24,14 +27,34 @@ function phoneDigits(value) {
     return hasPlus ? `+${digits}` : digits;
 }
 
-function localDateTime(value) {
+function shopDateTime(value, timeZone) {
     if (!value) return '';
-    const date = new Date(value);
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timeZone || undefined,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).formatToParts(new Date(value));
+    const read = (type) => parts.find((part) => part.type === type)?.value || '';
+    const hour = read('hour') === '24' ? '00' : read('hour');
+
+    return `${read('year')}-${read('month')}-${read('day')}T${hour}:${read('minute')}`;
 }
 
-export default function BookingFormDrawer({ open, booking, services, defaults = null, onClose }) {
+export default function BookingFormDrawer({
+    open,
+    booking,
+    services,
+    assignees = [],
+    branches = [],
+    defaultBranchId = null,
+    defaults = null,
+    onClose,
+}) {
+    const timeZone = usePage().props.company?.timezone;
     const editing = !!booking;
     const form = useForm(empty);
 
@@ -44,11 +67,13 @@ export default function BookingFormDrawer({ open, booking, services, defaults = 
             customer_phone: booking.customer_phone || '',
             address: booking.address || '',
             notes: booking.notes || '',
-            scheduled_at: localDateTime(booking.scheduled_at),
+            scheduled_at: shopDateTime(booking.scheduled_at, timeZone),
             status: booking.status,
-        } : { ...empty, scheduled_at: defaults?.scheduled_at || '' });
+            assigned_user_id: booking.assigned_user_id || '',
+            branch_id: booking.branch_id || defaultBranchId || '',
+        } : { ...empty, scheduled_at: defaults?.scheduled_at || '', branch_id: defaultBranchId || '' });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, booking?.id, defaults?.scheduled_at]);
+    }, [open, booking?.id, defaults?.scheduled_at, timeZone]);
 
     const selected = services.find((service) => String(service.id) === String(form.data.product_id));
 
@@ -96,21 +121,54 @@ export default function BookingFormDrawer({ open, booking, services, defaults = 
                                 onChange={(e) => form.setData('customer_phone', phoneDigits(e.target.value))} />
                         </Field>
                     </div>
+                    {!editing && (
+                        <Field label="Email" hint="Optional. Confirmation and the thank-you go here." error={form.errors.customer_email}>
+                            <Input type="email" value={form.data.customer_email}
+                                onChange={(e) => form.setData('customer_email', e.target.value)} />
+                        </Field>
+                    )}
                     {(editing ? !!booking.address : selected?.requires_address) && (
                         <Field label="Address" required={selected?.requires_address} error={form.errors.address}>
                             <Input value={form.data.address}
                                 onChange={(e) => form.setData('address', e.target.value)} />
                         </Field>
                     )}
-                    <Field label="Date and time" required error={form.errors.scheduled_at}>
+                    <Field label="Date and time" required error={form.errors.scheduled_at}
+                        hint={timeZone ? `Shop time (${timeZone.replace(/_/g, ' ')})` : undefined}>
                         <Input type="datetime-local" value={form.data.scheduled_at}
                             onChange={(e) => form.setData('scheduled_at', e.target.value)} />
+                    </Field>
+                    {branches.length > 1 && (
+                        <Field label="Branch" required error={form.errors.branch_id}>
+                            <select
+                                className={selectClass}
+                                value={form.data.branch_id}
+                                onChange={(e) => form.setData('branch_id', e.target.value)}
+                            >
+                                <option value="">Choose branch</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                ))}
+                            </select>
+                        </Field>
+                    )}
+                    <Field label="Person" error={form.errors.assigned_user_id}>
+                        <select
+                            className={selectClass}
+                            value={form.data.assigned_user_id}
+                            onChange={(e) => form.setData('assigned_user_id', e.target.value)}
+                        >
+                            <option value="">Nobody yet</option>
+                            {assignees.map((person) => (
+                                <option key={person.id} value={person.id}>{person.name}</option>
+                            ))}
+                        </select>
                     </Field>
                     {editing && (
                         <Field label="Status" error={form.errors.status}>
                             <select className={selectClass} value={form.data.status}
                                 onChange={(e) => form.setData('status', e.target.value)}>
-                                {['pending', 'confirmed', 'done', 'cancelled'].map((status) => (
+                                {['pending', 'confirmed', 'done', 'cancelled', 'expired'].map((status) => (
                                     <option key={status} value={status}>{status}</option>
                                 ))}
                             </select>

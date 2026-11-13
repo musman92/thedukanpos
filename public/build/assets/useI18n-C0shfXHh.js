@@ -1,0 +1,1 @@
+import{u as e,h as o,i as a,r as l,t as c,k as i}from"./boot-B-s_ZU80.js";function u(){const{i18n:t}=e().props,r=t?.locale||o(),s=t?.dir||a();return l.useMemo(()=>({t:c,locale:r,dir:s,rtl:t?.rtl??i()}),[r,s,t?.rtl])}export{u};

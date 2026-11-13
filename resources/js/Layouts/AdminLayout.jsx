@@ -226,6 +226,7 @@ function mergeAddonNav(coreModules, items = []) {
             id: groupId,
             label: item.group_label || groupId.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
             icon: addonIcons[item.icon] || Boxes,
+            badge: 'Addon',
             match: [item.route.replace(/\.index$/, '')],
             items: [navItem],
             order: item.order || 500,
@@ -300,6 +301,11 @@ function NavGroup({ mod, current, open, onToggle, t, collapsed = false }) {
             >
                 <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
                 {!collapsed && <span className="min-w-0 flex-1 truncate text-start">{label}</span>}
+                {!collapsed && mod.badge && (
+                    <span className="shrink-0 rounded-full border border-theme-primary/30 bg-theme-surface px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-theme-primary">
+                        {mod.badge}
+                    </span>
+                )}
                 {!collapsed &&
                     (open ? (
                         <Minus className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2} />

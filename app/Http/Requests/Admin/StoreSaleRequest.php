@@ -42,7 +42,7 @@ class StoreSaleRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if ($validator->errors()->isNotEmpty()) {
+            if ($this->input('intent') === 'draft' || $validator->errors()->isNotEmpty()) {
                 return;
             }
 

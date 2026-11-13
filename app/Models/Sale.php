@@ -48,6 +48,7 @@ class Sale extends Model
         'customer_id',
         'cashier_id',
         'status',
+        'source',
         'subtotal',
         'tax_total',
         'discount_total',

@@ -3,7 +3,7 @@ import Button from '@/Components/Ui/Button';
 import PageLimitSelect from '@/Components/Ui/PageLimitSelect';
 import Pagination from '@/Components/Ui/Pagination';
 import { confirmDelete } from '@/lib/confirm';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { CalendarDays, List, Pencil, Plus, Receipt, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import BookingCalendar from '../components/BookingCalendar';
@@ -45,7 +45,19 @@ function ViewToggle({ view, onChange }) {
     );
 }
 
-export default function Index({ bookings, filters, services, calendar }) {
+export default function Index({
+    bookings,
+    filters,
+    services,
+    calendar,
+    can,
+    assignees = [],
+    branches = [],
+    default_branch_id: defaultBranchId = null,
+}) {
+    const { errors = {}, company } = usePage().props;
+    const timeZone = company?.timezone;
+    const canManage = !!can?.manage;
     const view = filters.view === 'calendar' ? 'calendar' : 'list';
     const month = filters.month;
     const [open, setOpen] = useState(false);
@@ -56,6 +68,7 @@ export default function Index({ bookings, filters, services, calendar }) {
     const visit = (overrides = {}, options = {}) => router.get(route('admin.bookings.index'), {
         q: filters.q || '',
         status: filters.status || '',
+        assignee: filters.assignee || '',
         from: view === 'list' ? (filters.from || '') : '',
         to: view === 'list' ? (filters.to || '') : '',
         per_page: filters.per_page,
@@ -103,9 +116,11 @@ export default function Index({ bookings, filters, services, calendar }) {
                             to: next === 'calendar' ? '' : filters.to,
                         }, { preserveState: false })}
                     />
-                    <Button onClick={() => openCreate()}>
-                        <Plus className="h-4 w-4" /> Add Booking
-                    </Button>
+                    {canManage && (
+                        <Button onClick={() => openCreate()}>
+                            <Plus className="h-4 w-4" /> Add Booking
+                        </Button>
+                    )}
                 </div>
             }
         >
@@ -118,6 +133,7 @@ export default function Index({ bookings, filters, services, calendar }) {
                             extraQuery={{
                                 q: filters.q || '',
                                 status: filters.status || '',
+                                assignee: filters.assignee || '',
                                 from: filters.from || '',
                                 to: filters.to || '',
                                 view: 'list',
@@ -130,10 +146,18 @@ export default function Index({ bookings, filters, services, calendar }) {
                                 onChange={(e) => setQ(e.target.value)}
                                 placeholder="Customer, phone, number" />
                         </div>
+                        <select className={filterClass} value={filters.assignee || ''} aria-label="Person"
+                            onChange={(e) => visit({ assignee: e.target.value })}>
+                            <option value="">All people</option>
+                            <option value="none">Nobody yet</option>
+                            {assignees.map((person) => (
+                                <option key={person.id} value={person.id}>{person.name}</option>
+                            ))}
+                        </select>
                         <select className={filterClass} value={filters.status || ''}
                             onChange={(e) => visit({ status: e.target.value })}>
                             <option value="">All statuses</option>
-                            {['pending', 'confirmed', 'done', 'cancelled'].map((status) => (
+                            {['pending', 'confirmed', 'done', 'cancelled', 'expired'].map((status) => (
                                 <option key={status} value={status}>{status}</option>
                             ))}
                         </select>
@@ -148,6 +172,11 @@ export default function Index({ bookings, filters, services, calendar }) {
                         <Button type="submit" variant="secondary">Search</Button>
                     </form>
                 </div>
+                {(errors.booking || errors.convert) && (
+                    <p className="border-b border-theme-border bg-theme-danger/10 px-4 py-3 text-sm text-theme-danger">
+                        {errors.booking || errors.convert}
+                    </p>
+                )}
 
                 {view === 'calendar' ? (
                     <div className="p-4">
@@ -155,8 +184,10 @@ export default function Index({ bookings, filters, services, calendar }) {
                             calendar={calendar}
                             month={month}
                             onMonthChange={(next) => visit({ month: next, view: 'calendar' })}
+                            readOnly={!canManage}
                             onSelect={openEdit}
                             onCreate={openCreate}
+                            timeZone={timeZone}
                         />
                     </div>
                 ) : (
@@ -166,26 +197,35 @@ export default function Index({ bookings, filters, services, calendar }) {
                                 <thead className="bg-theme-bg text-xs uppercase text-theme-ink-muted">
                                     <tr>
                                         <th className="px-4 py-3">Booking</th><th className="px-4 py-3">Customer</th>
-                                        <th className="px-4 py-3">Service</th><th className="px-4 py-3">Scheduled</th>
+                                        <th className="px-4 py-3">Service</th>
+                                        {branches.length > 1 && <th className="px-4 py-3">Branch</th>}
+                                        <th className="px-4 py-3">Person</th>
+                                        <th className="px-4 py-3">Scheduled</th>
                                         <th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {bookings.data.length === 0 && <tr><td colSpan="6" className="px-4 py-12 text-center text-theme-ink-muted">No bookings yet.</td></tr>}
+                                    {bookings.data.length === 0 && <tr><td colSpan={branches.length > 1 ? 8 : 7} className="px-4 py-12 text-center text-theme-ink-muted">No bookings yet.</td></tr>}
                                     {bookings.data.map((booking) => (
                                         <tr key={booking.id} className="border-t border-theme-border">
                                             <td className="px-4 py-3 font-mono text-xs">{booking.number}</td>
                                             <td className="px-4 py-3"><div className="font-medium">{booking.customer_name}</div><div className="text-xs text-theme-ink-muted">{booking.customer_phone}</div></td>
                                             <td className="px-4 py-3">{booking.service_name}</td>
-                                            <td className="px-4 py-3">{new Date(booking.scheduled_at).toLocaleString()}</td>
+                                            {branches.length > 1 && <td className="px-4 py-3">{booking.branch?.name || '—'}</td>}
+                                            <td className="px-4 py-3">{booking.assignee?.name || '—'}</td>
+                                            <td className="px-4 py-3">{new Date(booking.scheduled_at).toLocaleString([], { timeZone: timeZone || undefined })}</td>
                                             <td className="px-4 py-3 capitalize">{booking.status}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button size="sm" variant="secondary" onClick={() => openEdit(booking)}><Pencil className="h-4 w-4" /></Button>
-                                                    {!booking.sale_id && ['confirmed', 'done'].includes(booking.status) && (
-                                                        <Button size="sm" onClick={() => router.post(route('admin.bookings.convert', booking.id))}><Receipt className="h-4 w-4" /> Order</Button>
+                                                    {canManage && (
+                                                        <>
+                                                            <Button size="sm" variant="secondary" onClick={() => openEdit(booking)}><Pencil className="h-4 w-4" /></Button>
+                                                            {booking.status !== 'cancelled' && (
+                                                                <Button size="sm" onClick={() => router.post(route('admin.bookings.convert', booking.id))}><Receipt className="h-4 w-4" /> Order</Button>
+                                                            )}
+                                                            <Button size="sm" variant="danger" onClick={() => remove(booking)}><Trash2 className="h-4 w-4" /></Button>
+                                                        </>
                                                     )}
-                                                    <Button size="sm" variant="danger" onClick={() => remove(booking)}><Trash2 className="h-4 w-4" /></Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -197,8 +237,8 @@ export default function Index({ bookings, filters, services, calendar }) {
                     </>
                 )}
             </div>
-            <BookingFormDrawer open={open} booking={editing} services={services} defaults={defaults}
-                onClose={closeForm} />
+            <BookingFormDrawer open={open} booking={editing} services={services} assignees={assignees}
+                branches={branches} defaultBranchId={defaultBranchId} defaults={defaults} onClose={closeForm} />
         </AdminLayout>
     );
 }

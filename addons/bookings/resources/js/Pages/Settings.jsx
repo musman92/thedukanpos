@@ -5,9 +5,6 @@ import { Head, router, useForm } from '@inertiajs/react';
 
 const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-const selectClass =
-    'w-full rounded-lg border border-theme-border bg-theme-surface px-3.5 py-2.5 text-sm text-theme-ink outline-none transition focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20';
-
 const checkboxClass =
     'rounded border-theme-border bg-theme-surface text-theme-primary focus:ring-theme-primary disabled:cursor-not-allowed disabled:opacity-60';
 
@@ -16,8 +13,8 @@ export default function Settings({ settings, public_url: publicUrl, google }) {
         max_concurrent: settings.max_concurrent,
         default_duration_minutes: settings.default_duration_minutes,
         public_enabled: !!settings.public_enabled,
+        public_time_mode: settings.public_time_mode === 'request' ? 'request' : 'slots',
         allow_staff_overbook: !!settings.allow_staff_overbook,
-        sales_ui: settings.sales_ui,
         business_hours: settings.business_hours,
         google_calendar_id: settings.google_calendar_id || 'primary',
     });
@@ -28,7 +25,7 @@ export default function Settings({ settings, public_url: publicUrl, google }) {
     });
 
     return (
-        <AdminLayout title="Booking settings" description="Availability, capacity, public link, sales flow, and calendar sync.">
+        <AdminLayout title="Booking settings" description="Availability, capacity, public link, and calendar sync.">
             <Head title="Booking settings" />
             <form className="mx-auto max-w-4xl space-y-6" onSubmit={(e) => {
                 e.preventDefault();
@@ -45,7 +42,31 @@ export default function Settings({ settings, public_url: publicUrl, google }) {
                             onChange={(e) => form.setData('public_enabled', e.target.checked)} />
                         Accept public bookings
                     </label>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium text-theme-ink">How customers pick a time</legend>
+                        <label className="flex items-start gap-2 text-sm text-theme-ink">
+                            <input type="radio" className={`${checkboxClass} mt-0.5`} name="public_time_mode"
+                                checked={form.data.public_time_mode === 'slots'}
+                                onChange={() => form.setData('public_time_mode', 'slots')} />
+                            <span>
+                                <span className="font-medium">Force open time slots</span>
+                                <span className="block text-theme-ink-muted">Customers only see times that are still free.</span>
+                            </span>
+                        </label>
+                        <label className="flex items-start gap-2 text-sm text-theme-ink">
+                            <input type="radio" className={`${checkboxClass} mt-0.5`} name="public_time_mode"
+                                checked={form.data.public_time_mode === 'request'}
+                                onChange={() => form.setData('public_time_mode', 'request')} />
+                            <span>
+                                <span className="font-medium">Let customers request a time</span>
+                                <span className="block text-theme-ink-muted">They pick a preferred time. You confirm it and move it if needed.</span>
+                            </span>
+                        </label>
+                        {form.errors.public_time_mode && (
+                            <p className="text-xs text-theme-danger">{form.errors.public_time_mode}</p>
+                        )}
+                    </fieldset>
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <Field label="Concurrent capacity" hint="0 means unlimited." error={form.errors.max_concurrent}>
                             <Input type="number" min="0" value={form.data.max_concurrent}
                                 onChange={(e) => form.setData('max_concurrent', e.target.value)} />
@@ -53,14 +74,6 @@ export default function Settings({ settings, public_url: publicUrl, google }) {
                         <Field label="Default duration (minutes)" error={form.errors.default_duration_minutes}>
                             <Input type="number" min="5" step="5" value={form.data.default_duration_minutes}
                                 onChange={(e) => form.setData('default_duration_minutes', e.target.value)} />
-                        </Field>
-                        <Field label="Sales screen">
-                            <select className={selectClass} value={form.data.sales_ui}
-                                onChange={(e) => form.setData('sales_ui', e.target.value)}>
-                                <option value="orders">Orders (recommended)</option>
-                                <option value="pos">POS</option>
-                                <option value="both">Both</option>
-                            </select>
                         </Field>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-theme-ink">

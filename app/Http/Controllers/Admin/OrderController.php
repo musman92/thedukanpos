@@ -87,12 +87,32 @@ class OrderController extends Controller
             abort(404);
         }
 
+        $payload = $request->payload(
+            $branch->id,
+            $sale->isParked()
+                ? $this->sales->resolveOpenShiftId($branch->id)
+                : $sale->shift_id,
+            $this->settings->allowPosCredit(),
+        );
+
         try {
-            $sale = $this->sales->update($sale, $request->payload(
-                $branch->id,
-                $sale->shift_id,
-                $this->settings->allowPosCredit(),
-            ));
+            if ($sale->isParked() && $request->input('intent') === 'draft') {
+                $sale = $this->sales->updateParked($sale, $payload);
+
+                return redirect()
+                    ->route('admin.orders.index', ['edit' => $sale->id])
+                    ->with('status', "Draft {$sale->number} saved.");
+            }
+
+            if ($sale->isParked()) {
+                $sale = $this->sales->completeParked($sale, $payload);
+
+                return redirect()
+                    ->route('admin.orders.show', $sale)
+                    ->with('status', "Order {$sale->number} checked out.");
+            }
+
+            $sale = $this->sales->update($sale, $payload);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         } catch (\Throwable $e) {

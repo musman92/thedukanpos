@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Read-only runtime view of the active tenant's addon manifests.
@@ -43,10 +44,16 @@ final class AddonRegistry
     public function nav(): array
     {
         $items = [];
+        $user = Auth::user();
 
         foreach ($this->activeManifests() as $manifest) {
             foreach ($manifest['nav'] as $item) {
                 if (! is_array($item) || empty($item['route']) || empty($item['label'])) {
+                    continue;
+                }
+
+                // A nav item that names a permission is only shown to users who hold it.
+                if (! empty($item['permission']) && ! $user?->can($item['permission'])) {
                     continue;
                 }
 

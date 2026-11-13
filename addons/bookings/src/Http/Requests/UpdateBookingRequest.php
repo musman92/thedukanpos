@@ -20,6 +20,8 @@ class UpdateBookingRequest extends FormRequest
             'status' => ['sometimes', Rule::in(Booking::STATUSES)],
             'address' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
         ];
     }
 }

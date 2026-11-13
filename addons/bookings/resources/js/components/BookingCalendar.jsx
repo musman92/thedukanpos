@@ -43,10 +43,14 @@ function weekdayLabels(weekStartsOn) {
     );
 }
 
-function timeLabel(value) {
+function timeLabel(value, timeZone) {
     if (!value) return '';
 
-    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(value).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: timeZone || undefined,
+    });
 }
 
 function dayHeading(key) {
@@ -64,6 +68,8 @@ export default function BookingCalendar({
     onMonthChange,
     onSelect,
     onCreate,
+    readOnly = false,
+    timeZone,
 }) {
     const today = todayKey();
     const days = calendar?.days || [];
@@ -93,6 +99,8 @@ export default function BookingCalendar({
     }, [month]);
 
     const selectedItems = byDay[selected] || [];
+    // View-only users can read the calendar but never open the edit drawer.
+    const select = readOnly ? () => {} : onSelect;
     const labels = weekdayLabels(calendar?.week_starts_on || 'monday');
 
     return (
@@ -179,12 +187,13 @@ export default function BookingCalendar({
                                         <button
                                             key={booking.id}
                                             type="button"
-                                            onClick={() => onSelect(booking)}
+                                            onClick={() => select(booking)}
                                             className={`block w-full truncate rounded px-1 py-0.5 text-left text-[11px] font-medium ${
                                                 STATUS_CLASS[booking.status] || STATUS_CLASS.pending
                                             }`}
                                         >
-                                            {timeLabel(booking.scheduled_at)} {booking.service_name}
+                                            {timeLabel(booking.scheduled_at, timeZone)} {booking.service_name}
+                                            {booking.assignee_name ? ` · ${booking.assignee_name}` : ''}
                                         </button>
                                     ))}
                                     {items.length > 3 && (
@@ -211,7 +220,7 @@ export default function BookingCalendar({
                             {selectedItems.length === 1 ? '1 booking' : `${selectedItems.length} bookings`}
                         </p>
                     </div>
-                    {selected && (
+                    {selected && !readOnly && (
                         <Button
                             size="sm"
                             variant="secondary"
@@ -230,15 +239,17 @@ export default function BookingCalendar({
                             <li key={booking.id}>
                                 <button
                                     type="button"
-                                    onClick={() => onSelect(booking)}
+                                    onClick={() => select(booking)}
                                     className="flex w-full items-start justify-between gap-3 rounded-lg border border-theme-border bg-theme-bg px-3 py-2.5 text-left"
                                 >
                                     <span>
                                         <span className="block text-sm font-medium">
-                                            {timeLabel(booking.scheduled_at)} · {booking.service_name}
+                                            {timeLabel(booking.scheduled_at, timeZone)} · {booking.service_name}
                                         </span>
                                         <span className="block text-xs text-theme-ink-muted">
-                                            {booking.customer_name} · {booking.number}
+                                            {booking.customer_name}
+                                            {booking.assignee_name ? ` · ${booking.assignee_name}` : ' · Nobody yet'}
+                                            {` · ${booking.number}`}
                                         </span>
                                     </span>
                                     <span

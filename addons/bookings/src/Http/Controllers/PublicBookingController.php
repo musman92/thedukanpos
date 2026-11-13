@@ -17,11 +17,15 @@ class PublicBookingController extends Controller
     {
         $settings = $this->bookings->settings();
         abort_unless($settings->public_enabled, 404);
+        $forceSlots = $settings->public_time_mode !== 'request';
 
         return Inertia::render('Addons/Bookings/Public', [
             'services' => $this->bookings->bookableServices(),
             'business_hours' => $settings->business_hours,
             'tenant_code' => $tenant_code,
+            'time_mode' => $forceSlots ? 'slots' : 'request',
+            'open_slots' => $forceSlots ? $this->bookings->openSlotsByService() : (object) [],
+            'branches' => $this->bookings->publicBranches(),
         ]);
     }
 

@@ -15,7 +15,7 @@ class AddonCatalogTest extends TestCase
         $this->assertSame('Addons\\Bookings\\Providers\\BookingsServiceProvider', $bookings['provider']);
         $this->assertSame([], $bookings['requires']);
         $this->assertSame([], $bookings['conflicts']);
-        $this->assertSame('orders', $bookings['capabilities']['checkout.surface']);
+        $this->assertArrayNotHasKey('checkout.surface', $bookings['capabilities']);
         $this->assertNotEmpty($bookings['slots']['product.form']);
     }
 

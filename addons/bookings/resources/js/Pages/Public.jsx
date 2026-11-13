@@ -21,8 +21,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 const WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const STEPS = ['Service', 'Time', 'Details'];
 const DAYS_AHEAD = 21;
-/* Same-day slots need a little breathing room before the visitor arrives. */
-const LEAD_MINUTES = 15;
 
 const ERROR_STEP = {
     product_id: 0,
@@ -30,18 +28,22 @@ const ERROR_STEP = {
     booking: 1,
     customer_name: 2,
     customer_phone: 2,
+    customer_email: 2,
     address: 2,
     notes: 2,
+    branch_id: 2,
 };
 
 const empty = {
     product_id: '',
     customer_name: '',
     customer_phone: '',
+    customer_email: '',
     address: '',
     notes: '',
     scheduled_at: '',
     website: '',
+    branch_id: '',
 };
 
 /** Business-local calendar date as YYYY-MM-DD. */
@@ -52,19 +54,6 @@ function dateKeyIn(timeZone, date = new Date()) {
         month: '2-digit',
         day: '2-digit',
     }).format(date);
-}
-
-/** Minutes past business-local midnight. */
-function minutesIn(timeZone, date = new Date()) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).formatToParts(date);
-    const read = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
-
-    return (read('hour') % 24) * 60 + read('minute');
 }
 
 function minutesFromTime(value) {
@@ -122,21 +111,18 @@ function weekRangeLabel(week) {
     return `${first.monthLabel} ${first.dayLabel} – ${last.monthLabel} ${last.dayLabel}`;
 }
 
-function buildSlots(day, hours, duration, todayKey, nowMinutes) {
-    const open = minutesFromTime(hours?.open);
-    const close = minutesFromTime(hours?.close);
-    if (!day || !hours?.enabled || open === null || close === null || close <= open) {
-        return [];
-    }
+function requestLabel(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
 
-    const earliest = day.key === todayKey ? nowMinutes + LEAD_MINUTES : 0;
-    const step = Math.max(15, duration);
-    const slots = [];
-    for (let start = open; start + duration <= close; start += step) {
-        if (start >= earliest) slots.push(start);
-    }
-
-    return slots;
+    return date.toLocaleString([], {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
 }
 
 function Monogram({ name, className = '' }) {
@@ -195,7 +181,14 @@ function SummaryRow({ label, value, onChange }) {
     );
 }
 
-export default function Public({ services, business_hours: hours, tenant_code: tenantCode }) {
+export default function Public({
+    services,
+    business_hours: hours,
+    tenant_code: tenantCode,
+    time_mode: timeMode = 'slots',
+    open_slots: openSlots = {},
+    branches = [],
+}) {
     const { tenant, company, flash } = usePage().props;
     const shopName = company?.shop_name || tenant?.name || tenantCode;
     const timeZone = company?.timezone || undefined;
@@ -214,8 +207,7 @@ export default function Public({ services, business_hours: hours, tenant_code: t
     });
     const form = useForm(blank());
 
-    const todayKey = useMemo(() => dateKeyIn(timeZone), [timeZone]);
-    const nowMinutes = useMemo(() => minutesIn(timeZone), [timeZone]);
+    const forceSlots = timeMode !== 'request';
     const today = useMemo(
         () =>
             new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone })
@@ -235,14 +227,17 @@ export default function Public({ services, business_hours: hours, tenant_code: t
         );
     }, [services, serviceSearch]);
 
-    const days = useMemo(
-        () =>
-            buildDays(timeZone).map((day) => ({
-                ...day,
-                slots: buildSlots(day, hours?.[day.weekday], duration, todayKey, nowMinutes),
-            })),
-        [timeZone, hours, duration, todayKey, nowMinutes],
-    );
+    const productKey = String(form.data.product_id || '');
+    const days = useMemo(() => {
+        const times = openSlots?.[productKey] || {};
+
+        return buildDays(timeZone).map((day) => ({
+            ...day,
+            slots: forceSlots
+                ? (times[day.key] || []).map((time) => minutesFromTime(time)).filter((value) => value !== null)
+                : [],
+        }));
+    }, [timeZone, forceSlots, openSlots, productKey]);
     const openDays = days.filter((day) => day.slots.length > 0);
     const weeks = useMemo(() => {
         const chunks = [];
@@ -294,10 +289,12 @@ export default function Public({ services, business_hours: hours, tenant_code: t
         form.clearErrors('scheduled_at');
     };
 
-    const canContinue = step === 0 ? !!service : slot !== null;
-    const scheduleLabel = selectedDay && slot !== null
-        ? `${selectedDay.weekdayLabel} ${selectedDay.dayLabel} ${selectedDay.monthLabel} · ${slotLabel(slot)}`
-        : '';
+    const canContinue = step === 0 ? !!service : forceSlots ? slot !== null : Boolean(form.data.scheduled_at);
+    const scheduleLabel = forceSlots
+        ? (selectedDay && slot !== null
+            ? `${selectedDay.weekdayLabel} ${selectedDay.dayLabel} ${selectedDay.monthLabel} · ${slotLabel(slot)}`
+            : '')
+        : requestLabel(form.data.scheduled_at);
 
     const fieldError = (key) => (revealErrors ? errorText(form.errors, key) : '');
     const keepErrors = useRef(false);
@@ -538,7 +535,26 @@ export default function Public({ services, business_hours: hours, tenant_code: t
                         </div>
                     )}
 
-                    {step === 1 && (
+                    {step === 1 && !forceSlots && (
+                        <div className="space-y-3">
+                            <p className="text-sm text-theme-ink-soft">
+                                Choose a preferred time in {timeZone ? timeZone.replace(/_/g, ' ') : 'the shop timezone'}. The shop will confirm it.
+                            </p>
+                            <Field label={<>Preferred date and time<RequiredMark /></>} error={fieldError('scheduled_at')}>
+                                <Input
+                                    type="datetime-local"
+                                    error={!!fieldError('scheduled_at')}
+                                    value={form.data.scheduled_at}
+                                    onChange={(e) => {
+                                        form.setData('scheduled_at', e.target.value);
+                                        form.clearErrors('scheduled_at');
+                                    }}
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    {step === 1 && forceSlots && (
                         <div className="space-y-5">
                             {openDays.length === 0 ? (
                                 <p className="rounded-xl border border-theme-border bg-theme-bg px-4 py-6 text-center text-sm text-theme-ink-soft">
@@ -648,11 +664,10 @@ export default function Public({ services, business_hours: hours, tenant_code: t
                                                 {fieldError('scheduled_at')}
                                             </p>
                                         )}
-                                        {timeZone && (
-                                            <p className="mt-3 text-xs text-theme-ink-muted">
-                                                Times shown in {timeZone.replace(/_/g, ' ')}.
-                                            </p>
-                                        )}
+                                        <p className="mt-3 text-xs text-theme-ink-muted">
+                                            Only open times are shown
+                                            {timeZone ? ` in ${timeZone.replace(/_/g, ' ')}` : ''}.
+                                        </p>
                                     </div>
                                 </>
                             )}
@@ -669,6 +684,25 @@ export default function Public({ services, business_hours: hours, tenant_code: t
                                     onChange={(e) => form.setData('website', e.target.value)}
                                 />
                             </div>
+                            {branches.length > 1 && (
+                                <Field label={<>Branch<RequiredMark /></>} error={fieldError('branch_id')}>
+                                    <select
+                                        value={form.data.branch_id}
+                                        onChange={(e) => {
+                                            form.setData('branch_id', e.target.value);
+                                            form.clearErrors('branch_id');
+                                        }}
+                                        className={`w-full rounded-lg border bg-theme-surface px-3.5 py-2.5 text-sm text-theme-ink outline-none focus:border-theme-primary focus:ring-2 focus:ring-theme-primary/20 ${
+                                            fieldError('branch_id') ? 'border-theme-danger' : 'border-theme-border'
+                                        }`}
+                                    >
+                                        <option value="">Choose a branch</option>
+                                        {branches.map((branch) => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                </Field>
+                            )}
                             <Field label={<>Your name<RequiredMark /></>} error={fieldError('customer_name')}>
                                 <Input
                                     autoComplete="name"
@@ -690,6 +724,22 @@ export default function Public({ services, business_hours: hours, tenant_code: t
                                     onChange={(e) => {
                                         form.setData('customer_phone', phoneDigits(e.target.value));
                                         form.clearErrors('customer_phone');
+                                    }}
+                                />
+                            </Field>
+                            <Field
+                                label="Email"
+                                hint="Optional. We email the confirmation and a thank-you here."
+                                error={fieldError('customer_email')}
+                            >
+                                <Input
+                                    type="email"
+                                    autoComplete="email"
+                                    error={!!fieldError('customer_email')}
+                                    value={form.data.customer_email}
+                                    onChange={(e) => {
+                                        form.setData('customer_email', e.target.value);
+                                        form.clearErrors('customer_email');
                                     }}
                                 />
                             </Field>
@@ -736,7 +786,7 @@ export default function Public({ services, business_hours: hours, tenant_code: t
                             type="button"
                             onClick={submit}
                             size="lg"
-                            disabled={form.processing}
+                            disabled={form.processing || (branches.length > 1 && !form.data.branch_id)}
                             className="ml-auto flex-1 sm:flex-none"
                         >
                             {form.processing ? 'Sending…' : 'Request booking'}

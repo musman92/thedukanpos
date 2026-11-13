@@ -14,6 +14,8 @@ class BookingResource extends JsonResource
             'number' => $this->number,
             'product_id' => $this->product_id,
             'customer_id' => $this->customer_id,
+            'assigned_user_id' => $this->assigned_user_id,
+            'assignee' => $this->assignee?->name,
             'sale_id' => $this->sale_id,
             'customer_name' => $this->customer_name,
             'customer_phone' => $this->customer_phone,

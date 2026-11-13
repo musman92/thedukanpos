@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\SaleCompleted;
 use App\Models\Customer;
 use App\Models\MoneySource;
 use App\Models\ProductVariant;
@@ -503,10 +504,12 @@ class SaleService
      *   }>
      * }  $data
      */
-    public function park(array $data): Sale
+    public function park(array $data, bool $requireShift = true): Sale
     {
-        return DB::transaction(function () use ($data) {
-            $this->assertOpenShift($data['shift_id'] ?? null);
+        return DB::transaction(function () use ($data, $requireShift) {
+            if ($requireShift) {
+                $this->assertOpenShift($data['shift_id'] ?? null);
+            }
             $businessDate = $this->resolveBusinessDate($data['business_date'] ?? null);
 
             $delivery = $this->resolveDelivery($data);
@@ -519,6 +522,7 @@ class SaleService
                 'customer_id' => $data['customer_id'] ?? null,
                 'cashier_id' => Auth::id(),
                 'status' => Sale::STATUS_PARKED,
+                'source' => $data['source'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'paid_total' => 0,
                 ...$delivery,
@@ -575,10 +579,14 @@ class SaleService
         return DB::transaction(function () use ($sale, $data) {
             $sale->items()->delete();
             $delivery = $this->resolveDelivery($data);
+            $businessDate = array_key_exists('business_date', $data)
+                ? $this->resolveBusinessDate($data['business_date'])
+                : ($sale->business_date?->toDateString() ?? company_today());
 
             $sale->update([
                 'customer_id' => $data['customer_id'] ?? null,
                 'cashier_id' => Auth::id(),
+                'business_date' => $businessDate,
                 'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?? null) : $sale->notes,
                 ...$delivery,
             ]);
@@ -591,16 +599,21 @@ class SaleService
                 deductStock: false,
             );
             $grandTotal = round($totals['total'] + $delivery['delivery_charge'], 4);
+            $paid = 0.0;
+            if (array_key_exists('payments', $data)) {
+                $sale->payments()->delete();
+                $paid = $this->recordPayments($sale, $data['payments']);
+            }
 
             $sale->update([
                 'subtotal' => $totals['subtotal'],
                 'tax_total' => $totals['tax_total'],
                 'discount_total' => $totals['discount_total'],
                 'total' => $grandTotal,
-                'paid_total' => 0,
+                'paid_total' => $paid,
             ]);
 
-            return $sale->fresh()->load(['items.product', 'items.variant', 'items.unit', 'customer']);
+            return $sale->fresh()->load(['items.product', 'items.variant', 'items.unit', 'customer', 'payments']);
         });
     }
 
@@ -633,6 +646,7 @@ class SaleService
             $this->assertOpenShift($shiftId);
 
             $sale->items()->delete();
+            $sale->payments()->delete();
 
             $customerId = $data['customer_id'] ?? null;
             $delivery = $this->resolveDelivery($data);
@@ -683,7 +697,10 @@ class SaleService
                 ['total' => $grandTotal, 'paid' => $paid, 'due' => max(0, $grandTotal - $paid)],
             );
 
-            return $sale->fresh()->load(['items.product', 'items.variant', 'payments.moneySource', 'customer']);
+            $finished = $sale->fresh()->load(['items.product', 'items.variant', 'payments.moneySource', 'customer']);
+            SaleCompleted::dispatch($finished);
+
+            return $finished;
         });
     }
 
@@ -793,6 +810,7 @@ class SaleService
             'rider_id' => $sale->rider_id,
             'money_source_id' => $firstPayment?->money_source_id,
             'paid_amount' => round((float) $sale->paid_total, 2),
+            'status' => $sale->status,
             'can_edit' => $sale->status === Sale::STATUS_COMPLETED && $sale->returns->isEmpty(),
             'items' => $sale->items->map(function (SaleItem $item) {
                 $tax = $item->product?->tax;
@@ -1009,6 +1027,7 @@ class SaleService
             ->with(['customer:id,name', 'items.product:id,name', 'items.variant:id,name,short_code', 'items.unit:id,code'])
             ->where('branch_id', $branchId)
             ->where('status', Sale::STATUS_PARKED)
+            ->whereNull('source')
             ->orderByDesc('updated_at')
             ->get()
             ->map(fn (Sale $sale) => $this->serializeParked($sale))

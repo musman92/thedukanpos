@@ -133,6 +133,7 @@ export default function OrderFormDrawer({
     enable_delivery: enableDelivery = false,
 }) {
     const isEdit = !!order?.id;
+    const isDraft = order?.status === 'parked';
     const defaultMoneySourceId = moneySources[0]?.id ?? null;
     const form = useForm(
         emptyData({
@@ -322,7 +323,7 @@ export default function OrderFormDrawer({
         form.setData('paid_amount', formatAmountInput(total));
     };
 
-    const submit = (e) => {
+    const submit = (e, intent = 'checkout') => {
         e.preventDefault();
         form.transform((data) => ({
             customer_id: data.customer_id || null,
@@ -335,6 +336,7 @@ export default function OrderFormDrawer({
             rider_id: data.is_delivery && data.rider_id ? data.rider_id : null,
             money_source_id: data.money_source_id || null,
             paid_amount: data.paid_amount || 0,
+            intent: isDraft ? intent : undefined,
             items: data.items.map((item) => ({
                 variant_id: item.variant_id,
                 unit_id: item.unit_id,
@@ -347,6 +349,7 @@ export default function OrderFormDrawer({
         const options = {
             preserveScroll: true,
             onSuccess: () => {
+                if (isDraft) return;
                 form.reset();
                 onClose();
             },
@@ -366,9 +369,11 @@ export default function OrderFormDrawer({
             onClose={onClose}
             title={isEdit ? `Edit order ${order.number}` : 'New order'}
             description={
-                isEdit
-                    ? 'Update lines, payment, and delivery. Stock and customer balances are recalculated.'
-                    : 'Create a sale from the back office — stock is deducted and payments post like POS.'
+                isDraft
+                    ? 'Change anything you need. Save a draft to come back later, or check out to finish the sale.'
+                    : isEdit
+                      ? 'Update lines, payment, and delivery. Stock and customer balances are recalculated.'
+                      : 'Create a sale from the back office — stock is deducted and payments post like POS.'
             }
             width="wide"
             bodyClassName="overflow-y-auto flex flex-col"
@@ -774,13 +779,32 @@ export default function OrderFormDrawer({
                     <Button type="button" variant="secondary" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button type="submit" disabled={form.processing || form.data.items.length === 0}>
-                        {form.processing
-                            ? 'Saving…'
-                            : isEdit
-                              ? 'Update order'
-                              : 'Create order'}
-                    </Button>
+                    {isDraft ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={form.processing || form.data.items.length === 0}
+                                onClick={(e) => submit(e, 'draft')}
+                            >
+                                {form.processing ? 'Saving…' : 'Save draft'}
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={form.processing || form.data.items.length === 0}
+                            >
+                                {form.processing ? 'Saving…' : 'Checkout'}
+                            </Button>
+                        </>
+                    ) : (
+                        <Button type="submit" disabled={form.processing || form.data.items.length === 0}>
+                            {form.processing
+                                ? 'Saving…'
+                                : isEdit
+                                  ? 'Update order'
+                                  : 'Create order'}
+                        </Button>
+                    )}
                 </div>
             </form>
         </Drawer>

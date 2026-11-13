@@ -15,7 +15,6 @@ return new class extends Migration
             $table->unsignedInteger('default_duration_minutes')->default(60);
             $table->boolean('public_enabled')->default(true);
             $table->boolean('allow_staff_overbook')->default(false);
-            $table->string('sales_ui', 20)->default('orders');
             $table->json('business_hours')->nullable();
             $table->string('google_calendar_id')->nullable();
             $table->text('google_access_token')->nullable();

@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,9 +21,14 @@ class BookingController extends Controller
 
     public function index(Request $request): Response
     {
-        return Inertia::render('Addons/Bookings/Index', $this->bookings->adminIndex($request->only([
-            'q', 'status', 'from', 'to', 'per_page', 'view', 'month',
-        ])));
+        return Inertia::render('Addons/Bookings/Index', [
+            ...$this->bookings->adminIndex($request->only([
+                'q', 'status', 'from', 'to', 'per_page', 'view', 'month', 'assignee',
+            ])),
+            'can' => [
+                'manage' => $request->user()->can('bookings.manage'),
+            ],
+        ]);
     }
 
     public function store(StoreBookingRequest $request): RedirectResponse
@@ -48,14 +54,26 @@ class BookingController extends Controller
 
     public function convert(Booking $booking): RedirectResponse
     {
-        $sale = $this->bookings->convertToSale($booking);
+        try {
+            $sale = $this->bookings->openOrder($booking);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['booking' => $e->getMessage()]);
+        }
 
-        return redirect()->route('admin.orders.show', $sale)
-            ->with('status', "Order {$sale->number} created from booking.");
+        return redirect()->route('admin.orders.index', ['edit' => $sale->id]);
     }
 
     public function productSettings(int $product): JsonResponse
     {
+        // The product form reads these fields so it can show and save them.
+        // Anyone who can view bookings or edit products needs them; nobody else does.
+        abort_unless(
+            Gate::any(['bookings.view', 'products.store', 'products.update']),
+            403,
+        );
+
         $settings = BookingProductSetting::query()->find($product);
 
         return response()->json($settings ?? [

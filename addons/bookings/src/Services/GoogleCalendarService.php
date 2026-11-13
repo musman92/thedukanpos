@@ -137,7 +137,7 @@ class GoogleCalendarService
             return;
         }
 
-        if ($booking->status === 'cancelled') {
+        if (in_array($booking->status, ['cancelled', 'expired'], true)) {
             $this->delete($booking, $settings);
 
             return;

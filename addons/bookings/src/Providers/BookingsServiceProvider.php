@@ -2,27 +2,32 @@
 
 namespace Addons\Bookings\Providers;
 
+use Addons\Bookings\Console\ExpireBookingsCommand;
+use Addons\Bookings\Listeners\MarkBookingDone;
 use Addons\Bookings\Listeners\SaveBookingProductSettings;
-use Addons\Bookings\Models\BookingSetting;
 use App\Events\ProductSaved;
-use App\Support\AddonRegistry;
+use App\Events\SaleCompleted;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class BookingsServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        $this->loadViewsFrom(dirname(__DIR__, 2).'/resources/views', 'bookings');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([ExpireBookingsCommand::class]);
+        }
+
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
+            $schedule->command('bookings:expire')->hourly();
+        });
+
         Event::listen(ProductSaved::class, SaveBookingProductSettings::class);
-        app(AddonRegistry::class)->registerCapability(
-            'bookings',
-            'checkout.surface',
-            fn () => Schema::hasTable('booking_settings')
-                ? BookingSetting::current()->sales_ui
-                : 'orders',
-        );
+        Event::listen(SaleCompleted::class, MarkBookingDone::class);
 
         if ($this->app->routesAreCached()) {
             return;

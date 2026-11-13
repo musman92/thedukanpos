@@ -1,0 +1,1 @@
+import{j as r}from"./boot-B-s_ZU80.js";function a({message:t,className:e="",...n}){return t?r.jsx("p",{...n,className:"text-sm text-theme-danger "+e,children:t}):null}function l({value:t,className:e="",children:n,...s}){return r.jsx("label",{...s,className:"block text-sm font-medium text-theme-ink "+e,children:t||n})}export{l as I,a};
